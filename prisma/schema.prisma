@@ -1,0 +1,210 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// Enums
+// ============================================
+
+enum EventStatus {
+  ACTIVE
+  CANCELLED
+  FINISHED
+}
+
+enum ParticipantStatus {
+  CONFIRMED
+  PENDING
+  CANCELLED
+}
+
+enum PhotoType {
+  PROFILE
+  CAR
+  EVENT
+}
+
+// ============================================
+// Models
+// ============================================
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  users       User[]
+
+  @@map("roles")
+}
+
+model User {
+  id            Int      @id @default(autoincrement())
+  firstName     String   @map("first_name")
+  lastName      String   @map("last_name")
+  email         String   @unique
+  password      String
+  phone         String?
+  roleId        Int      @map("role_id")
+  profilePhoto  String?  @map("profile_photo")
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  role              Role               @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  cars              Car[]
+  organizedEvents   Event[]            @relation("EventOrganizer")
+  participations    EventParticipant[]
+  votes             Vote[]
+  comments          Comment[]
+
+  @@index([roleId])
+  @@map("users")
+}
+
+model Car {
+  id              Int      @id @default(autoincrement())
+  userId          Int      @map("user_id")
+  brand           String
+  model           String
+  year            Int
+  color           String
+  licensePlate    String?  @map("license_plate")
+  description     String?  @db.Text
+  modifications   Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  photos          Photo[]
+  participations  EventParticipant[]
+  votes           Vote[]
+  comments        Comment[]
+
+  @@index([userId])
+  @@map("cars")
+}
+
+model Event {
+  id            Int          @id @default(autoincrement())
+  name          String
+  description   String?      @db.Text
+  location      String
+  date          DateTime
+  startTime     DateTime     @map("start_time")
+  endTime       DateTime?    @map("end_time")
+  organizerId   Int          @map("organizer_id")
+  eventImage    String?      @map("event_image")
+  status        EventStatus  @default(ACTIVE)
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  organizer     User                 @relation("EventOrganizer", fields: [organizerId], references: [id], onDelete: Cascade)
+  participants  EventParticipant[]
+  votes         Vote[]
+  comments      Comment[]
+  photos        Photo[]
+
+  @@index([organizerId])
+  @@index([date])
+  @@map("events")
+}
+
+model EventParticipant {
+  id              Int                @id @default(autoincrement())
+  eventId         Int                @map("event_id")
+  userId          Int                @map("user_id")
+  carId           Int                @map("car_id")
+  status          ParticipantStatus  @default(PENDING)
+  registeredAt    DateTime           @default(now()) @map("registered_at")
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+
+  // Relations
+  event           Event              @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  car             Car                @relation(fields: [carId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId, carId])
+  @@index([eventId])
+  @@index([userId])
+  @@index([carId])
+  @@map("event_participants")
+}
+
+model Vote {
+  id         Int      @id @default(autoincrement())
+  eventId    Int      @map("event_id")
+  carId      Int      @map("car_id")
+  voterId    Int      @map("voter_id")
+  category   String
+  score      Int      @default(1)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  car        Car      @relation(fields: [carId], references: [id], onDelete: Cascade)
+  voter      User     @relation(fields: [voterId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, carId, voterId, category])
+  @@index([eventId])
+  @@index([carId])
+  @@index([voterId])
+  @@map("votes")
+}
+
+model Comment {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @map("user_id")
+  carId      Int?     @map("car_id")
+  eventId    Int?     @map("event_id")
+  content    String   @db.Text
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  car        Car?     @relation(fields: [carId], references: [id], onDelete: Cascade)
+  event      Event?   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([carId])
+  @@index([eventId])
+  @@map("comments")
+}
+
+model Photo {
+  id         Int       @id @default(autoincrement())
+  url        String
+  type       PhotoType
+  carId      Int?      @map("car_id")
+  eventId    Int?      @map("event_id")
+  caption    String?
+  isMain     Boolean   @default(false) @map("is_main")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  car        Car?      @relation(fields: [carId], references: [id], onDelete: Cascade)
+  event      Event?    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([carId])
+  @@index([eventId])
+  @@map("photos")
+}
