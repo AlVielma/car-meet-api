@@ -11,11 +11,13 @@ API REST para gestionar eventos de car meets (reuniones de autos), permitiendo a
 npm install
 ```
 
-### 2. Generar el cliente de Prisma
+### 2. Sincronizar base de datos
 
 ```bash
-npm run prisma:generate
+npm run prisma:migrate
 ```
+
+**Nota:** Este comando automáticamente ejecuta `prisma:generate`, por lo que no necesitas ejecutarlo por separado.
 
 ### 3. Poblar la base de datos (Opcional)
 
@@ -39,3 +41,4 @@ Si todo está correcto, deberías ver: ✅ Conexión exitosa a la base de datos!
 
 ```bash
 npm run dev
+```
