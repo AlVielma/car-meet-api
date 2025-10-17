@@ -4,6 +4,16 @@
     // File Layout
     "rootDir": "./src",
     "outDir": "./dist",
+    "baseUrl": "./src",
+    "paths": {
+      "@/*": ["./*"],
+      "@/interfaces": ["./interfaces/index.js"],
+      "@/controllers/*": ["./controllers/*"],
+      "@/middlewares/*": ["./middlewares/*"],
+      "@/routes/*": ["./routes/*"],
+      "@/utils/*": ["./utils/*"],
+      "@/configs/*": ["./configs/*"]
+    },
 
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
