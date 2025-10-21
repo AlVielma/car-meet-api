@@ -26,7 +26,43 @@ export interface RegisterResponse {
   };
 }
 
+export interface LoginData {
+  email: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  user: RegisterResponse;
+  token: string;
+  expiresIn: number; // En segundos
+}
+
 export class AuthService {
+  /**
+   * Convierte formato de tiempo (ej: "7d", "1h", "30m") a segundos
+   */
+  private static parseTimeToSeconds(timeString: string): number {
+    const timeRegex = /^(\d+)([smhd])$/;
+    const match = timeString.match(timeRegex);
+    
+    if (!match || !match[1] || !match[2]) {
+      // Si no puede parsear, asume que son días por defecto
+      return 7 * 24 * 60 * 60; // 7 días en segundos
+    }
+    
+    const amount = match[1];
+    const unit = match[2];
+    const numAmount = parseInt(amount, 10);
+    
+    switch (unit) {
+      case 's': return numAmount; // segundos
+      case 'm': return numAmount * 60; // minutos a segundos
+      case 'h': return numAmount * 60 * 60; // horas a segundos
+      case 'd': return numAmount * 24 * 60 * 60; // días a segundos
+      default: return 7 * 24 * 60 * 60; // 7 días por defecto
+    }
+  }
+
   /**
    * Verifica si un email ya está registrado
    */
@@ -195,6 +231,101 @@ export class AuthService {
     });
 
     return updatedUser;
+  }
+
+  /**
+   * Autentica un usuario con email y contraseña
+   */
+  static async login(data: LoginData): Promise<LoginResponse> {
+    const { email, password } = data;
+
+    // Buscar el usuario por email
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phone: true,
+        password: true,
+        isActive: true,
+        createdAt: true,
+        role: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new Error('INVALID_CREDENTIALS');
+    }
+
+    // Verificar si la cuenta está activa
+    if (!user.isActive) {
+      throw new Error('ACCOUNT_NOT_ACTIVATED');
+    }
+
+    // Verificar la contraseña
+    const isPasswordValid = await PasswordUtil.compare(password, user.password);
+    if (!isPasswordValid) {
+      throw new Error('INVALID_CREDENTIALS');
+    }
+
+    // Generar token de acceso
+    const token = JwtUtil.generateAccessToken(user.id, user.email, user.role.slug);
+
+    // Crear respuesta sin la contraseña
+    const { password: _, ...userWithoutPassword } = user;
+
+    // Obtener el tiempo de expiración configurado y convertir a segundos
+    const expiresInString = process.env.JWT_ACCESS_EXPIRES || '7d';
+    const expiresIn = this.parseTimeToSeconds(expiresInString);
+
+    return {
+      user: userWithoutPassword,
+      token,
+      expiresIn,
+    };
+  }
+
+  /**
+   * Obtiene los datos del usuario actual por ID
+   */
+  static async getCurrentUser(userId: number): Promise<RegisterResponse> {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phone: true,
+        isActive: true,
+        createdAt: true,
+        role: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new Error('USER_NOT_FOUND');
+    }
+
+    if (!user.isActive) {
+      throw new Error('ACCOUNT_NOT_ACTIVATED');
+    }
+
+    return user;
   }
 }
 

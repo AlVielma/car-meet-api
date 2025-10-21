@@ -68,3 +68,22 @@ export const registerValidator = [
     }),
 ];
 
+export const loginValidator = [
+  body('email')
+    .notEmpty()
+    .withMessage('El email es requerido')
+    .bail()
+    .isEmail()
+    .withMessage('Debe ser un email válido')
+    .bail()
+    .normalizeEmail()
+    .toLowerCase(),
+
+  body('password')
+    .notEmpty()
+    .withMessage('La contraseña es requerida')
+    .bail()
+    .isString()
+    .withMessage('La contraseña debe ser un texto'),
+];
+
