@@ -58,7 +58,6 @@ model User {
   password      String
   phone         String?
   roleId        Int      @map("role_id")
-  profilePhoto  String?  @map("profile_photo")
   isActive      Boolean  @default(false) @map("is_active")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
@@ -70,6 +69,7 @@ model User {
   participations    EventParticipant[]
   votes             Vote[]
   comments          Comment[]
+  photos            Photo[]
 
   @@index([roleId])
   @@map("users")
@@ -108,7 +108,6 @@ model Event {
   startTime     DateTime     @map("start_time")
   endTime       DateTime?    @map("end_time")
   organizerId   Int          @map("organizer_id")
-  eventImage    String?      @map("event_image")
   status        EventStatus  @default(ACTIVE)
   createdAt     DateTime     @default(now()) @map("created_at")
   updatedAt     DateTime     @updatedAt @map("updated_at")
@@ -193,6 +192,7 @@ model Photo {
   id         Int       @id @default(autoincrement())
   url        String
   type       PhotoType
+  userId     Int?      @map("user_id")
   carId      Int?      @map("car_id")
   eventId    Int?      @map("event_id")
   caption    String?
@@ -201,9 +201,11 @@ model Photo {
   updatedAt  DateTime  @updatedAt @map("updated_at")
 
   // Relations
+  user       User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
   car        Car?      @relation(fields: [carId], references: [id], onDelete: Cascade)
   event      Event?    @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@index([carId])
   @@index([eventId])
   @@map("photos")

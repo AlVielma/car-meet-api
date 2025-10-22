@@ -42,7 +42,11 @@ export interface CarOwner {
   firstName: string;
   lastName: string;
   email: string;
-  profilePhoto: string | null;
+  photos: {
+    id: number;
+    url: string;
+    isMain: boolean;
+  }[];
 }
 
 export interface CarPhotoResponse {

@@ -56,7 +56,19 @@ export class CarService {
               firstName: true,
               lastName: true,
               email: true,
-              profilePhoto: true,
+              photos: {
+                select: {
+                  id: true,
+                  url: true,
+                  isMain: true,
+                },
+                where: {
+                  type: 'PROFILE',
+                },
+                orderBy: {
+                  isMain: 'desc',
+                },
+              },
             },
           },
           photos: {
@@ -110,7 +122,19 @@ export class CarService {
             firstName: true,
             lastName: true,
             email: true,
-            profilePhoto: true,
+            photos: {
+              select: {
+                id: true,
+                url: true,
+                isMain: true,
+              },
+              where: {
+                type: 'PROFILE',
+              },
+              orderBy: {
+                isMain: 'desc',
+              },
+            },
           },
         },
         photos: {
@@ -175,7 +199,19 @@ export class CarService {
             firstName: true,
             lastName: true,
             email: true,
-            profilePhoto: true,
+            photos: {
+              select: {
+                id: true,
+                url: true,
+                isMain: true,
+              },
+              where: {
+                type: 'PROFILE',
+              },
+              orderBy: {
+                isMain: 'desc',
+              },
+            },
           },
         },
         photos: {
@@ -237,7 +273,19 @@ export class CarService {
             firstName: true,
             lastName: true,
             email: true,
-            profilePhoto: true,
+            photos: {
+              select: {
+                id: true,
+                url: true,
+                isMain: true,
+              },
+              where: {
+                type: 'PROFILE',
+              },
+              orderBy: {
+                isMain: 'desc',
+              },
+            },
           },
         },
         photos: {
@@ -297,7 +345,19 @@ export class CarService {
             firstName: true,
             lastName: true,
             email: true,
-            profilePhoto: true,
+            photos: {
+              select: {
+                id: true,
+                url: true,
+                isMain: true,
+              },
+              where: {
+                type: 'PROFILE',
+              },
+              orderBy: {
+                isMain: 'desc',
+              },
+            },
           },
         },
         photos: {
