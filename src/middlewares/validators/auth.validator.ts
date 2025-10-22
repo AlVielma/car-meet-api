@@ -4,7 +4,7 @@ export const registerValidator = [
   body('firstName')
     .notEmpty()
     .withMessage('El nombre es requerido')
-    .bail() // Detiene la validación si falla
+    .bail()
     .isString()
     .withMessage('El nombre debe ser un texto')
     .bail()

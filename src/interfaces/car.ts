@@ -1,12 +1,13 @@
 // DTOs para operaciones con autos
 export interface CreateCarDto {
+  userId: number;
   brand: string;
   model: string;
   year: number;
   color: string;
   licensePlate?: string;
   description?: string;
-  modifications?: CarModifications;
+  modifications?: string;
 }
 
 export interface UpdateCarDto {
@@ -16,18 +17,7 @@ export interface UpdateCarDto {
   color?: string;
   licensePlate?: string;
   description?: string;
-  modifications?: CarModifications;
-}
-
-// Tipo para las modificaciones del auto (JSON)
-export interface CarModifications {
-  engine?: string;
-  suspension?: string;
-  exhaust?: string;
-  wheels?: string;
-  interior?: string;
-  exterior?: string;
-  other?: string[];
+  modifications?: string;
 }
 
 // Tipos de respuesta
@@ -40,18 +30,26 @@ export interface CarResponse {
   color: string;
   licensePlate: string | null;
   description: string | null;
-  modifications: CarModifications | null;
+  modifications: string | null;
   createdAt: Date;
   updatedAt: Date;
-  owner: CarOwner;
-  photos: PhotoResponse[];
+  user: CarOwner;
+  photos: CarPhotoResponse[];
 }
 
 export interface CarOwner {
   id: number;
   firstName: string;
   lastName: string;
+  email: string;
   profilePhoto: string | null;
+}
+
+export interface CarPhotoResponse {
+  id: number;
+  url: string;
+  isMain: boolean;
+  caption: string | null;
 }
 
 export interface CarDetailResponse extends CarResponse {
@@ -60,17 +58,20 @@ export interface CarDetailResponse extends CarResponse {
   participations: CarEventParticipation[];
 }
 
-interface CarEventParticipation {
+export interface CarEventParticipation {
   eventId: number;
   eventName: string;
   eventDate: Date;
   status: string;
 }
 
-interface PhotoResponse {
-  id: number;
-  url: string;
-  isMain: boolean;
-  caption: string | null;
+export interface PaginatedCarsResponse {
+  cars: CarResponse[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
 }
 

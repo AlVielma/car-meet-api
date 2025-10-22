@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import prisma from './configs/database.js';
 import authRoutes from './routes/auth.routes.js';
 import userRoutes from './routes/user.routes.js';
+import carRoutes from './routes/car.routes.js';
 import multer from 'multer';
 const upload = multer();
 
@@ -26,6 +27,7 @@ app.get('/', (req: Request, res: Response) => {
 // Rutas
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/cars', carRoutes);
 
 app.listen(PORT, () => {
   console.log(`Servidor ejecutándose en http://localhost:${PORT}`);
