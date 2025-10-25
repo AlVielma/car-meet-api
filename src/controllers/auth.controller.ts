@@ -32,6 +32,7 @@ export class AuthController {
       console.error('Error en register:', error);
 
       if (error.message === 'EMAIL_ALREADY_EXISTS') {
+        
         return ResponseUtil.error(res, 'El email ya está registrado', null, 409);
       }
 

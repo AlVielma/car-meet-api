@@ -1,22 +1,21 @@
 // DTOs para operaciones con eventos
 export interface CreateEventDto {
+  organizerId: number;
   name: string;
   description?: string;
   location: string;
-  date: string; // ISO string
-  startTime: string; // ISO string
-  endTime?: string; // ISO string
-  eventImage?: string;
+  date: Date;
+  startTime: Date;
+  endTime?: Date;
 }
 
 export interface UpdateEventDto {
   name?: string;
   description?: string;
   location?: string;
-  date?: string;
-  startTime?: string;
-  endTime?: string;
-  eventImage?: string;
+  date?: Date;
+  startTime?: Date;
+  endTime?: Date;
   status?: 'ACTIVE' | 'CANCELLED' | 'FINISHED';
 }
 
@@ -29,11 +28,14 @@ export interface EventResponse {
   date: Date;
   startTime: Date;
   endTime: Date | null;
-  eventImage: string | null;
   status: string;
   createdAt: Date;
   updatedAt: Date;
   organizer: EventOrganizer;
+  photos: EventPhotoResponse[];
+  _count?: {
+    participants: number;
+  };
 }
 
 export interface EventOrganizer {
@@ -41,7 +43,28 @@ export interface EventOrganizer {
   firstName: string;
   lastName: string;
   email: string;
-  profilePhoto: string | null;
+  photos: {
+    id: number;
+    url: string;
+    isMain: boolean;
+  }[];
+}
+
+export interface EventPhotoResponse {
+  id: number;
+  url: string;
+  caption: string | null;
+  isMain: boolean;
+}
+
+export interface PaginatedEventsResponse {
+  events: EventResponse[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
 }
 
 export interface EventDetailResponse extends EventResponse {
@@ -77,6 +100,7 @@ interface EventPhoto {
   id: number;
   url: string;
   caption: string | null;
+  isMain: boolean;
   createdAt: Date;
 }
 
