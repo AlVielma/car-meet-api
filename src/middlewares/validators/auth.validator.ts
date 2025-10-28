@@ -87,3 +87,38 @@ export const loginValidator = [
     .withMessage('La contraseña debe ser un texto'),
 ];
 
+export const verifyCodeValidator = [
+  body('email')
+    .notEmpty()
+    .withMessage('El email es requerido')
+    .bail()
+    .isEmail()
+    .withMessage('Debe ser un email válido')
+    .bail()
+    .normalizeEmail()
+    .toLowerCase(),
+
+  body('code')
+    .notEmpty()
+    .withMessage('El código de verificación es requerido')
+    .bail()
+    .isString()
+    .withMessage('El código debe ser un texto')
+    .bail()
+    .trim()
+    .matches(/^[0-9]{6}$/)
+    .withMessage('El código debe ser de 6 dígitos numéricos'),
+];
+
+export const resendCodeValidator = [
+  body('email')
+    .notEmpty()
+    .withMessage('El email es requerido')
+    .bail()
+    .isEmail()
+    .withMessage('Debe ser un email válido')
+    .bail()
+    .normalizeEmail()
+    .toLowerCase(),
+];
+

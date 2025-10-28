@@ -1,5 +1,5 @@
 import { transporter, emailFrom } from '../configs/email.js';
-import { getActivationEmailTemplate, getActivationSuccessTemplate } from '../templates/activation-email.template.js';
+import { getActivationEmailTemplate, getActivationSuccessTemplate, getVerificationCodeTemplate } from '../templates/activation-email.template.js';
 
 export interface SendEmailOptions {
   to: string;
@@ -62,6 +62,24 @@ export class EmailService {
       subject: '✅ ¡Tu cuenta ha sido activada! - Car Meet',
       html,
       text: `¡Felicidades ${userName}! Tu cuenta ha sido activada correctamente. Ya puedes iniciar sesión en Car Meet.`,
+    });
+  }
+
+  /**
+   * Envía código de verificación para 2FA
+   */
+  static async sendVerificationCode(
+    userEmail: string,
+    userName: string,
+    verificationCode: string
+  ): Promise<boolean> {
+    const html = getVerificationCodeTemplate(userName, verificationCode);
+
+    return await this.sendEmail({
+      to: userEmail,
+      subject: '🔐 Código de verificación - Car Meet',
+      html,
+      text: `Hola ${userName}, tu código de verificación es: ${verificationCode}. Este código expira en 5 minutos.`,
     });
   }
 }

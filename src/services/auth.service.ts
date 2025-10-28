@@ -37,7 +37,39 @@ export interface LoginResponse {
   expiresIn: number; // En segundos
 }
 
+export interface LoginStep1Response {
+  message: string;
+  email: string;
+}
+
+export interface VerifyCodeData {
+  email: string;
+  code: string;
+}
+
+export interface VerifyCodeResponse {
+  user: RegisterResponse;
+  token: string;
+  expiresIn: number;
+}
+
+export interface ResendCodeData {
+  email: string;
+}
+
+export interface ResendCodeResponse {
+  message: string;
+  email: string;
+}
+
 export class AuthService {
+  /**
+   * Genera un código de verificación de 6 dígitos
+   */
+  private static generateVerificationCode(): string {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  }
+
   /**
    * Convierte formato de tiempo (ej: "7d", "1h", "30m") a segundos
    */
@@ -234,9 +266,9 @@ export class AuthService {
   }
 
   /**
-   * Autentica un usuario con email y contraseña
+   * Primer paso del login: verifica credenciales y envía código de verificación
    */
-  static async login(data: LoginData): Promise<LoginResponse> {
+  static async loginStep1(data: LoginData): Promise<LoginStep1Response> {
     const { email, password } = data;
 
     // Buscar el usuario por email
@@ -276,20 +308,190 @@ export class AuthService {
       throw new Error('INVALID_CREDENTIALS');
     }
 
+    // Generar código de verificación de 6 dígitos
+    const verificationCode = this.generateVerificationCode();
+    const hashedCode = await PasswordUtil.hash(verificationCode);
+    
+    // Calcular tiempo de expiración (5 minutos)
+    const codeExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+    // Guardar el código hasheado y tiempo de expiración en la base de datos
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        verificationCode: hashedCode,
+        codeExpiresAt: codeExpiresAt,
+      },
+    });
+
+    // Enviar código por email (no bloqueante)
+    EmailService.sendVerificationCode(
+      user.email,
+      `${user.firstName} ${user.lastName}`,
+      verificationCode
+    ).catch((error) => {
+      console.error('Error al enviar código de verificación:', error);
+    });
+
+    return {
+      message: 'Código de verificación enviado a tu correo electrónico',
+      email: user.email,
+    };
+  }
+
+  /**
+   * Segundo paso del login: verifica el código y genera el token
+   */
+  static async verifyCode(data: VerifyCodeData): Promise<VerifyCodeResponse> {
+    const { email, code } = data;
+
+    // Buscar el usuario por email
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phone: true,
+        password: true,
+        isActive: true,
+        verificationCode: true,
+        codeExpiresAt: true,
+        createdAt: true,
+        role: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new Error('INVALID_CREDENTIALS');
+    }
+
+    // Verificar si la cuenta está activa
+    if (!user.isActive) {
+      throw new Error('ACCOUNT_NOT_ACTIVATED');
+    }
+
+    // Verificar si existe un código de verificación
+    if (!user.verificationCode || !user.codeExpiresAt) {
+      throw new Error('NO_VERIFICATION_CODE');
+    }
+
+    // Verificar si el código ha expirado
+    if (new Date() > user.codeExpiresAt) {
+      // Limpiar el código expirado
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          verificationCode: null,
+          codeExpiresAt: null,
+        },
+      });
+      throw new Error('VERIFICATION_CODE_EXPIRED');
+    }
+
+    // Verificar el código
+    const isCodeValid = await PasswordUtil.compare(code, user.verificationCode);
+    if (!isCodeValid) {
+      throw new Error('INVALID_VERIFICATION_CODE');
+    }
+
+    // Limpiar el código de verificación después de uso exitoso
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        verificationCode: null,
+        codeExpiresAt: null,
+      },
+    });
+
     // Generar token de acceso
     const token = JwtUtil.generateAccessToken(user.id, user.email, user.role.slug);
 
-    // Crear respuesta sin la contraseña
-    const { password: _, ...userWithoutPassword } = user;
+    // Crear respuesta sin la contraseña y código
+    const { password: _, verificationCode: __, codeExpiresAt: ___, ...userWithoutSensitiveData } = user;
 
     // Obtener el tiempo de expiración configurado y convertir a segundos
     const expiresInString = process.env.JWT_ACCESS_EXPIRES || '7d';
     const expiresIn = this.parseTimeToSeconds(expiresInString);
 
     return {
-      user: userWithoutPassword,
+      user: userWithoutSensitiveData,
       token,
       expiresIn,
+    };
+  }
+
+  /**
+   * Reenvía un código de verificación para un usuario
+   */
+  static async resendVerificationCode(data: ResendCodeData): Promise<ResendCodeResponse> {
+    const { email } = data;
+
+    // Buscar el usuario por email
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        isActive: true,
+        verificationCode: true,
+        codeExpiresAt: true,
+      },
+    });
+
+    if (!user) {
+      throw new Error('USER_NOT_FOUND');
+    }
+
+    // Verificar si la cuenta está activa
+    if (!user.isActive) {
+      throw new Error('ACCOUNT_NOT_ACTIVATED');
+    }
+
+    // Verificar si ya hay un código pendiente y si no ha expirado
+    if (user.verificationCode && user.codeExpiresAt && new Date() < user.codeExpiresAt) {
+      // Calcular tiempo restante
+      const timeRemaining = Math.ceil((user.codeExpiresAt.getTime() - new Date().getTime()) / 1000 / 60);
+      throw new Error(`CODE_ALREADY_SENT: Debes esperar ${timeRemaining} minutos antes de solicitar un nuevo código`);
+    }
+
+    // Generar nuevo código de verificación de 6 dígitos
+    const verificationCode = this.generateVerificationCode();
+    const hashedCode = await PasswordUtil.hash(verificationCode);
+    
+    // Calcular tiempo de expiración (5 minutos)
+    const codeExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+    // Guardar el nuevo código hasheado y tiempo de expiración en la base de datos
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        verificationCode: hashedCode,
+        codeExpiresAt: codeExpiresAt,
+      },
+    });
+
+    // Enviar código por email (no bloqueante)
+    EmailService.sendVerificationCode(
+      user.email,
+      `${user.firstName} ${user.lastName}`,
+      verificationCode
+    ).catch((error) => {
+      console.error('Error al reenviar código de verificación:', error);
+    });
+
+    return {
+      message: 'Nuevo código de verificación enviado a tu correo electrónico',
+      email: user.email,
     };
   }
 

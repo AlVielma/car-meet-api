@@ -300,3 +300,156 @@ export const getActivationSuccessTemplate = (userName: string): string => {
   `;
 };
 
+export const getVerificationCodeTemplate = (userName: string, verificationCode: string): string => {
+  return `
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Código de Verificación - Car Meet</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 40px 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        .header {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            padding: 40px 30px;
+            text-align: center;
+        }
+        .header .icon {
+            font-size: 80px;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            color: white;
+            font-size: 32px;
+            font-weight: 700;
+        }
+        .content {
+            padding: 40px 30px;
+            text-align: center;
+            color: #333;
+        }
+        .content h2 {
+            color: #f59e0b;
+            font-size: 28px;
+            margin-bottom: 20px;
+        }
+        .content p {
+            line-height: 1.8;
+            color: #555;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        .code-container {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            border-radius: 16px;
+            padding: 30px;
+            margin: 30px 0;
+            box-shadow: 0 8px 20px rgba(245, 158, 11, 0.3);
+        }
+        .verification-code {
+            font-size: 48px;
+            font-weight: 700;
+            color: white;
+            letter-spacing: 8px;
+            font-family: 'Courier New', monospace;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        .warning-box {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 8px;
+        }
+        .warning-box p {
+            margin: 0;
+            color: #92400e;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .security-info {
+            background: #f8f9ff;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 8px;
+        }
+        .security-info p {
+            margin: 0;
+            color: #667eea;
+            font-size: 14px;
+        }
+        .footer {
+            background: #f8f9ff;
+            padding: 30px;
+            text-align: center;
+            color: #888;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="icon">🔐</div>
+            <h1>Car Meet</h1>
+        </div>
+        
+        <div class="content">
+            <h2>¡Hola, ${userName}! 👋</h2>
+            
+            <p>
+                Hemos detectado un intento de inicio de sesión en tu cuenta. 
+                Para completar el proceso de autenticación, utiliza el siguiente código de verificación:
+            </p>
+            
+            <div class="code-container">
+                <div class="verification-code">${verificationCode}</div>
+            </div>
+            
+            <div class="warning-box">
+                <p>
+                    ⏰ <strong>Importante:</strong> Este código expira en 5 minutos por seguridad.
+                </p>
+            </div>
+            
+            <div class="security-info">
+                <p>
+                    🛡️ <strong>Seguridad:</strong> Si no intentaste iniciar sesión, 
+                    ignora este correo y considera cambiar tu contraseña.
+                </p>
+            </div>
+            
+            <p style="margin-top: 30px; font-size: 14px; color: #888;">
+                Este código es de un solo uso y se invalidará después de ser utilizado.
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p><strong>Car Meet App</strong></p>
+            <p>© ${new Date().getFullYear()} Car Meet. Todos los derechos reservados.</p>
+        </div>
+    </div>
+</body>
+</html>
+  `;
+};
+
