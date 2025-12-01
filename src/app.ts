@@ -8,8 +8,6 @@ import userRoutes from "./routes/user.routes.js";
 import carRoutes from "./routes/car.routes.js";
 import eventRoutes from "./routes/event.routes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
-import multer from "multer";
-const upload = multer();
 
 dotenv.config();
 
@@ -28,7 +26,6 @@ app.use(
 
 // Middleware para parsear JSON
 app.use(express.json());
-app.use(upload.none());
 
 app.use(express.urlencoded({ extended: true }));
 

@@ -7,6 +7,7 @@ import {
   resendCodeValidator,
 } from "../middlewares/validators/auth.validator.js";
 import { AuthMiddleware } from "../middlewares/auth.middleware.js";
+import { uploadProfilePhoto, resizeProfilePhoto } from "../middlewares/upload.middleware.js";
 
 const router = Router();
 
@@ -15,7 +16,7 @@ const router = Router();
  * @desc    Registrar un nuevo usuario
  * @access  Public
  */
-router.post("/register", registerValidator, AuthController.register);
+router.post("/register", uploadProfilePhoto.single('photo'), resizeProfilePhoto, registerValidator, AuthController.register);
 
 /**
  * @route   GET /api/auth/activate/:token

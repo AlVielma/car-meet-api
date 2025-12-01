@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { validationResult } from "express-validator";
+import fs from 'fs';
 import { ResponseUtil } from "../utils/response.util.js";
 import { AuthService } from "../services/auth.service.js";
 
@@ -8,10 +9,24 @@ export class AuthController {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
+        // Si hay errores de validación y se subió una imagen, la eliminamos
+        if (req.file) {
+          fs.unlinkSync(req.file.path);
+        }
         return ResponseUtil.validationError(res, errors.array());
       }
 
       const { firstName, lastName, email, phone, password } = req.body;
+      const photoPath = req.file ? req.file.path : undefined;
+
+      console.log("Datos de registro recibidos:", {
+        firstName,
+        lastName,
+        email,
+        phone,
+        password,
+        photoPath,
+      });
 
       const user = await AuthService.register({
         firstName,
@@ -19,6 +34,7 @@ export class AuthController {
         email,
         phone,
         password,
+        photoPath
       });
 
       return ResponseUtil.success(
@@ -29,6 +45,17 @@ export class AuthController {
       );
     } catch (error: any) {
       console.error("Error en register:", error);
+
+      // Si hubo un error y se subió un archivo, eliminarlo
+      if (req.file) {
+        try {
+          if (fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+          }
+        } catch (unlinkError) {
+          console.error("Error al eliminar archivo tras fallo en registro:", unlinkError);
+        }
+      }
 
       if (error.message === "EMAIL_ALREADY_EXISTS") {
         return ResponseUtil.error(
