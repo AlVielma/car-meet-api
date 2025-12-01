@@ -108,6 +108,8 @@ export class EventController {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
+        // Log para depuración: ver qué validación falló
+        console.log("Errores de validación en updateEvent:", JSON.stringify(errors.array(), null, 2));
         return ResponseUtil.validationError(res, errors.array());
       }
 

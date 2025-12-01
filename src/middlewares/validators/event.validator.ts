@@ -13,7 +13,7 @@ export const createEventValidator = [
     .withMessage('El nombre debe tener entre 3 y 100 caracteres'),
 
   body('description')
-    .optional()
+    .optional({ nullable: true })
     .bail()
     .isString()
     .withMessage('La descripción debe ser un texto')
@@ -57,7 +57,7 @@ export const createEventValidator = [
     .withMessage('La hora de inicio debe ser una fecha/hora válida (formato ISO 8601)'),
 
   body('endTime')
-    .optional()
+    .optional({ nullable: true })
     .bail()
     .isISO8601()
     .withMessage('La hora de fin debe ser una fecha/hora válida (formato ISO 8601)')
@@ -90,7 +90,7 @@ export const updateEventValidator = [
     .withMessage('El nombre debe tener entre 3 y 100 caracteres'),
 
   body('description')
-    .optional()
+    .optional({ nullable: true })
     .bail()
     .isString()
     .withMessage('La descripción debe ser un texto')
@@ -122,7 +122,7 @@ export const updateEventValidator = [
     .withMessage('La hora de inicio debe ser una fecha/hora válida (formato ISO 8601)'),
 
   body('endTime')
-    .optional()
+    .optional({ nullable: true })
     .bail()
     .isISO8601()
     .withMessage('La hora de fin debe ser una fecha/hora válida (formato ISO 8601)')
