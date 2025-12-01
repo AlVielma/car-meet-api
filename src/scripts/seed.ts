@@ -218,6 +218,23 @@ async function main() {
     },
   });
 
+  console.log("👥 Usuario admin creado.");
+
+  //crear otro usuario admin
+  await prisma.user.create({
+    data: {
+      firstName: "Carlos",
+      lastName: "Duron",
+      email: "carlosduron973@gmail.com",
+      password: hashedPassword,
+      roleId: adminRole.id,
+      isActive: true,
+    },
+  });
+  console.log("👥 Segundo usuario admin creado.");
+
+  console.log("👥 Creando organizadores...");
+
   // Crear 10 organizadores
   if (!organizerRole) {
     throw new Error("Organizer role not found");
@@ -258,10 +275,26 @@ async function main() {
 
   console.log("🚗 Creando autos...");
 
-  const cars = [];
-  for (let i = 0; i < 120; i++) {
-    const user = randomFrom(participants);
+  // Primero garantizar 1 auto por participante
+  const cars: Car[] = [];
+  for (const p of participants) {
+    const car = await prisma.car.create({
+      data: {
+        userId: p.id,
+        brand: randomFrom(carBrands),
+        model: randomFrom(carModels),
+        year: randomInt(1995, 2024),
+        color: randomFrom(colors),
+        modifications: "Suspensión, Rines, Escape deportivo",
+        description: "Proyecto personal cargado de estilo",
+      },
+    });
+    cars.push(car);
+  }
 
+  // Autos extra (para llegar a 120)
+  for (let i = cars.length; i < 120; i++) {
+    const user = randomFrom(participants);
     const car = await prisma.car.create({
       data: {
         userId: user.id,
@@ -273,7 +306,6 @@ async function main() {
         description: "Proyecto personal cargado de estilo",
       },
     });
-
     cars.push(car);
   }
 
@@ -301,13 +333,22 @@ async function main() {
 
   console.log("🏎️ Creando participaciones...");
 
+  const participationSet = new Set<string>();
   const eventParticipants = [];
-  for (let i = 0; i < 300; i++) {
+  const PARTICIPATIONS_TARGET = 300;
+  let participationAttempts = 0;
+  while (
+    eventParticipants.length < PARTICIPATIONS_TARGET &&
+    participationAttempts < PARTICIPATIONS_TARGET * 4
+  ) {
+    participationAttempts++;
     const event = randomFrom(events);
     const user = randomFrom(participants);
-    const car = randomFrom(cars.filter((c) => c.userId === user.id));
-
-    if (!car) continue;
+    const userCars = cars.filter((c) => c.userId === user.id);
+    if (userCars.length === 0) continue;
+    const car = randomFrom(userCars);
+    const key = `${event.id}-${user.id}-${car.id}`;
+    if (participationSet.has(key)) continue;
 
     try {
       const ep = await prisma.eventParticipant.create({
@@ -318,9 +359,14 @@ async function main() {
           status: "CONFIRMED",
         },
       });
-
+      participationSet.add(key);
       eventParticipants.push(ep);
-    } catch {}
+    } catch (e) {
+      // Ignorar P2002 silenciosamente
+      if ((e as any).code !== "P2002") {
+        console.log("❌ Error creando participación:", e);
+      }
+    }
   }
 
   console.log("👥 Participaciones creadas:", eventParticipants.length);
@@ -342,25 +388,51 @@ async function main() {
 
   console.log("🗳️ Creando votos...");
 
+  const voteSet = new Set<string>();
+  let votesCreated = 0;
+  const categories = ["Best Style", "Engine", "Interior"];
+  const VOTES_PER_CAR = 3;
+
   for (const event of events) {
     const eventCars = eventParticipants
       .filter((ep) => ep.eventId === event.id)
       .map((ep) => ep.carId);
 
     for (const carId of eventCars) {
-      for (let j = 0; j < 3; j++) {
-        await prisma.vote.create({
-          data: {
-            eventId: event.id,
-            carId,
-            voterId: randomFrom(participants).id,
-            category: ["Best Style", "Engine", "Interior"][randomInt(0, 2)],
-            score: randomInt(1, 10),
-          },
-        });
+      let createdForThisCar = 0;
+      let attempts = 0;
+      while (
+        createdForThisCar < VOTES_PER_CAR &&
+        attempts < VOTES_PER_CAR * 10
+      ) {
+        attempts++;
+        const category = randomFrom(categories);
+        const voter = randomFrom(participants);
+        const key = `${event.id}-${carId}-${voter.id}-${category}`;
+        if (voteSet.has(key)) continue;
+
+        try {
+          await prisma.vote.create({
+            data: {
+              eventId: event.id,
+              carId,
+              voterId: voter.id,
+              category,
+              score: randomInt(1, 10),
+            },
+          });
+          voteSet.add(key);
+          votesCreated++;
+          createdForThisCar++;
+        } catch (e) {
+          if ((e as any).code !== "P2002") {
+            console.log("❌ Error creando voto:", e);
+          }
+        }
       }
     }
   }
+  console.log("✅ Votos creados:", votesCreated);
 
   console.log("📸 Creando fotos...");
 

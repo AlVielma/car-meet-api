@@ -1,10 +1,9 @@
-import { Request, Response } from 'express';
-import { validationResult } from 'express-validator';
-import { ResponseUtil } from '../utils/response.util.js';
-import { AuthService } from '../services/auth.service.js';
+import { Request, Response } from "express";
+import { validationResult } from "express-validator";
+import { ResponseUtil } from "../utils/response.util.js";
+import { AuthService } from "../services/auth.service.js";
 
 export class AuthController {
-
   static async register(req: Request, res: Response): Promise<Response> {
     try {
       const errors = validationResult(req);
@@ -24,19 +23,27 @@ export class AuthController {
 
       return ResponseUtil.success(
         res,
-        'Usuario registrado exitosamente. Por favor, revisa tu correo para activar tu cuenta.',
+        "Usuario registrado exitosamente. Por favor, revisa tu correo para activar tu cuenta.",
         user,
         201
       );
     } catch (error: any) {
-      console.error('Error en register:', error);
+      console.error("Error en register:", error);
 
-      if (error.message === 'EMAIL_ALREADY_EXISTS') {
-        
-        return ResponseUtil.error(res, 'El email ya está registrado', null, 409);
+      if (error.message === "EMAIL_ALREADY_EXISTS") {
+        return ResponseUtil.error(
+          res,
+          "El email ya está registrado",
+          null,
+          409
+        );
       }
 
-      return ResponseUtil.serverError(res, 'Error al registrar el usuario', error);
+      return ResponseUtil.serverError(
+        res,
+        "Error al registrar el usuario",
+        error
+      );
     }
   }
 
@@ -45,42 +52,57 @@ export class AuthController {
       const { token } = req.params;
 
       if (!token) {
-        return ResponseUtil.error(res, 'Token de activación no proporcionado', null, 400);
+        return ResponseUtil.error(
+          res,
+          "Token de activación no proporcionado",
+          null,
+          400
+        );
       }
 
       const user = await AuthService.activateAccount(token);
 
       return ResponseUtil.success(
         res,
-        '¡Tu cuenta ha sido activada exitosamente! Ya puedes iniciar sesión.',
+        "¡Tu cuenta ha sido activada exitosamente! Ya puedes iniciar sesión.",
         user,
         200
       );
     } catch (error: any) {
-      console.error('Error en activateAccount:', error);
+      console.error("Error en activateAccount:", error);
 
-      if (error.message === 'TOKEN_EXPIRED') {
+      if (error.message === "TOKEN_EXPIRED") {
         return ResponseUtil.error(
           res,
-          'El enlace de activación ha expirado. Por favor, solicita uno nuevo.',
+          "El enlace de activación ha expirado. Por favor, solicita uno nuevo.",
           null,
           400
         );
       }
 
-      if (error.message === 'INVALID_TOKEN') {
-        return ResponseUtil.error(res, 'El enlace de activación no es válido.', null, 400);
+      if (error.message === "INVALID_TOKEN") {
+        return ResponseUtil.error(
+          res,
+          "El enlace de activación no es válido.",
+          null,
+          400
+        );
       }
 
-      if (error.message === 'USER_NOT_FOUND') {
-        return ResponseUtil.error(res, 'Usuario no encontrado.', null, 404);
+      if (error.message === "USER_NOT_FOUND") {
+        return ResponseUtil.error(res, "Usuario no encontrado.", null, 404);
       }
 
-      if (error.message === 'ACCOUNT_ALREADY_ACTIVE') {
-        return ResponseUtil.error(res, 'Esta cuenta ya ha sido activada.', null, 400);
+      if (error.message === "ACCOUNT_ALREADY_ACTIVE") {
+        return ResponseUtil.error(
+          res,
+          "Esta cuenta ya ha sido activada.",
+          null,
+          400
+        );
       }
 
-      return ResponseUtil.serverError(res, 'Error al activar la cuenta', error);
+      return ResponseUtil.serverError(res, "Error al activar la cuenta", error);
     }
   }
 
@@ -97,7 +119,10 @@ export class AuthController {
       const { email, password } = req.body;
 
       // Llamar al servicio para el primer paso del login
-      const loginStep1Response = await AuthService.loginStep1({ email, password });
+      const loginStep1Response = await AuthService.loginStep1({
+        email,
+        password,
+      });
 
       return ResponseUtil.success(
         res,
@@ -106,23 +131,28 @@ export class AuthController {
         200
       );
     } catch (error: any) {
-      console.error('Error en login:', error);
+      console.error("Error en login:", error);
 
       // Manejo de errores específicos del servicio
-      if (error.message === 'INVALID_CREDENTIALS') {
-        return ResponseUtil.error(res, 'Email o contraseña incorrectos', null, 401);
+      if (error.message === "INVALID_CREDENTIALS") {
+        return ResponseUtil.error(
+          res,
+          "Email o contraseña incorrectos",
+          null,
+          401
+        );
       }
 
-      if (error.message === 'ACCOUNT_NOT_ACTIVATED') {
+      if (error.message === "ACCOUNT_NOT_ACTIVATED") {
         return ResponseUtil.error(
-          res, 
-          'Tu cuenta no ha sido activada. Por favor, revisa tu correo electrónico.',
+          res,
+          "Tu cuenta no ha sido activada. Por favor, revisa tu correo electrónico.",
           null,
           403
         );
       }
 
-      return ResponseUtil.serverError(res, 'Error al iniciar sesión', error);
+      return ResponseUtil.serverError(res, "Error al iniciar sesión", error);
     }
   }
 
@@ -143,55 +173,55 @@ export class AuthController {
 
       return ResponseUtil.success(
         res,
-        'Inicio de sesión exitoso',
+        "Inicio de sesión exitoso",
         verifyResponse,
         200
       );
     } catch (error: any) {
-      console.error('Error en verifyCode:', error);
+      console.error("Error en verifyCode:", error);
 
       // Manejo de errores específicos del servicio
-      if (error.message === 'INVALID_CREDENTIALS') {
-        return ResponseUtil.error(res, 'Email incorrecto', null, 401);
+      if (error.message === "INVALID_CREDENTIALS") {
+        return ResponseUtil.error(res, "Email incorrecto", null, 401);
       }
 
-      if (error.message === 'ACCOUNT_NOT_ACTIVATED') {
+      if (error.message === "ACCOUNT_NOT_ACTIVATED") {
         return ResponseUtil.error(
-          res, 
-          'Tu cuenta no ha sido activada. Por favor, revisa tu correo electrónico.',
+          res,
+          "Tu cuenta no ha sido activada. Por favor, revisa tu correo electrónico.",
           null,
           403
         );
       }
 
-      if (error.message === 'NO_VERIFICATION_CODE') {
+      if (error.message === "NO_VERIFICATION_CODE") {
         return ResponseUtil.error(
-          res, 
-          'No hay código de verificación pendiente. Por favor, inicia sesión.',
+          res,
+          "No hay código de verificación pendiente. Por favor, inicia sesión.",
           null,
           400
         );
       }
 
-      if (error.message === 'VERIFICATION_CODE_EXPIRED') {
+      if (error.message === "VERIFICATION_CODE_EXPIRED") {
         return ResponseUtil.error(
-          res, 
-          'El código de verificación ha expirado.',
+          res,
+          "El código de verificación ha expirado.",
           null,
           400
         );
       }
 
-      if (error.message === 'INVALID_VERIFICATION_CODE') {
+      if (error.message === "INVALID_VERIFICATION_CODE") {
         return ResponseUtil.error(
-          res, 
-          'Código de verificación incorrecto',
+          res,
+          "Código de verificación incorrecto",
           null,
           400
         );
       }
 
-      return ResponseUtil.serverError(res, 'Error al verificar código', error);
+      return ResponseUtil.serverError(res, "Error al verificar código", error);
     }
   }
 
@@ -208,7 +238,9 @@ export class AuthController {
       const { email } = req.body;
 
       // Llamar al servicio para reenviar el código
-      const resendResponse = await AuthService.resendVerificationCode({ email });
+      const resendResponse = await AuthService.resendVerificationCode({
+        email,
+      });
 
       return ResponseUtil.success(
         res,
@@ -217,33 +249,33 @@ export class AuthController {
         200
       );
     } catch (error: any) {
-      console.error('Error en resendCode:', error);
+      console.error("Error en resendCode:", error);
 
       // Manejo de errores específicos del servicio
-      if (error.message === 'USER_NOT_FOUND') {
-        return ResponseUtil.error(res, 'Usuario no encontrado', null, 404);
+      if (error.message === "USER_NOT_FOUND") {
+        return ResponseUtil.error(res, "Usuario no encontrado", null, 404);
       }
 
-      if (error.message === 'ACCOUNT_NOT_ACTIVATED') {
+      if (error.message === "ACCOUNT_NOT_ACTIVATED") {
         return ResponseUtil.error(
-          res, 
-          'Tu cuenta no ha sido activada. Por favor, revisa tu correo electrónico.',
+          res,
+          "Tu cuenta no ha sido activada. Por favor, revisa tu correo electrónico.",
           null,
           403
         );
       }
 
-      if (error.message.startsWith('CODE_ALREADY_SENT:')) {
-        const timeRemaining = error.message.split(': ')[1];
+      if (error.message.startsWith("CODE_ALREADY_SENT:")) {
+        const timeRemaining = error.message.split(": ")[1];
         return ResponseUtil.error(
-          res, 
+          res,
           timeRemaining,
           null,
           429 // Too Many Requests
         );
       }
 
-      return ResponseUtil.serverError(res, 'Error al reenviar código', error);
+      return ResponseUtil.serverError(res, "Error al reenviar código", error);
     }
   }
 
@@ -254,7 +286,7 @@ export class AuthController {
     try {
       // El usuario viene del middleware de autenticación
       if (!req.user) {
-        return ResponseUtil.unauthorized(res, 'Usuario no autenticado');
+        return ResponseUtil.unauthorized(res, "Usuario no autenticado");
       }
 
       // Obtener los datos actualizados del usuario
@@ -262,30 +294,45 @@ export class AuthController {
 
       return ResponseUtil.success(
         res,
-        'Información del usuario obtenida exitosamente',
+        "Información del usuario obtenida exitosamente",
         user,
         200
       );
     } catch (error: any) {
-      console.error('Error en me:', error);
+      console.error("Error en me:", error);
 
       // Manejo de errores específicos
-      if (error.message === 'USER_NOT_FOUND') {
-        return ResponseUtil.error(res, 'Usuario no encontrado', null, 404);
+      if (error.message === "USER_NOT_FOUND") {
+        return ResponseUtil.error(res, "Usuario no encontrado", null, 404);
       }
 
-      if (error.message === 'ACCOUNT_NOT_ACTIVATED') {
+      if (error.message === "ACCOUNT_NOT_ACTIVATED") {
         return ResponseUtil.error(
           res,
-          'Tu cuenta no ha sido activada. Por favor, revisa tu correo electrónico.',
+          "Tu cuenta no ha sido activada. Por favor, revisa tu correo electrónico.",
           null,
           403
         );
       }
 
-      return ResponseUtil.serverError(res, 'Error al obtener información del usuario', error);
+      return ResponseUtil.serverError(
+        res,
+        "Error al obtener información del usuario",
+        error
+      );
     }
   }
 
-}
+  static async logout(req: Request, res: Response): Promise<Response> {
+    try {
+      // Si usas cookie para el token, límpiala (ajusta el nombre de la cookie)
+      // res.clearCookie('authToken', { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' });
 
+      return ResponseUtil.success(res, "Sesión cerrada", null, 200);
+      // Alternativa sin ResponseUtil:
+      // return res.status(200).json({ success: true, message: 'Sesión cerrada' });
+    } catch (error: any) {
+      return ResponseUtil.serverError(res, "Error al cerrar sesión", error);
+    }
+  }
+}
