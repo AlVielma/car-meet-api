@@ -9,6 +9,7 @@ import authRoutes from "./routes/auth.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import eventRoutes from "./routes/event.routes.js";
 import carRoutes from "./routes/car.routes.js";
+import analyticsRoutes from "./routes/analytics.routes.js";
 
 // Para obtener __dirname en ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -64,7 +65,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/cars", carRoutes);
-
+app.use("/api/analytics", analyticsRoutes);
 // Manejador de errores 404
 app.use((req: Request, res: Response) => {
   res.status(404).json({
