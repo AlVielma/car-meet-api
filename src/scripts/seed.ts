@@ -31,8 +31,8 @@ interface Car {
   model: string;
   year: number;
   color: string;
-  modifications: string;
-  description: string;
+  modifications: string | null;
+  description: string | null;
 }
 
 interface Event {

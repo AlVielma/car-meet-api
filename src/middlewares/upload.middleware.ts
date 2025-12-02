@@ -30,6 +30,9 @@ export const uploadProfilePhoto = multer({
   }
 });
 
+// Agregar este export para compatibilidad
+export const upload = uploadProfilePhoto;
+
 export const resizeProfilePhoto = async (req: Request, res: Response, next: NextFunction) => {
   if (!req.file) return next();
 

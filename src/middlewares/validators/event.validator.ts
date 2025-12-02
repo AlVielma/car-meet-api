@@ -1,4 +1,5 @@
 import { body, param, query } from 'express-validator';
+import { validate } from './common.js';
 
 export const createEventValidator = [
   body('name')
@@ -181,5 +182,150 @@ export const getEventsValidator = [
     .bail()
     .isBoolean()
     .withMessage('upcoming debe ser true o false'),
+];
+
+export const participateEventValidator = [
+  param('id')
+    .isInt({ min: 1 })
+    .withMessage('ID de evento inválido'),
+
+  body('brand')
+    .notEmpty()
+    .withMessage('La marca del auto es requerida')
+    .bail()
+    .isString()
+    .withMessage('La marca debe ser un texto')
+    .bail()
+    .trim()
+    .isLength({ min: 2, max: 50 })
+    .withMessage('La marca debe tener entre 2 y 50 caracteres'),
+
+  body('model')
+    .notEmpty()
+    .withMessage('El modelo del auto es requerido')
+    .bail()
+    .isString()
+    .withMessage('El modelo debe ser un texto')
+    .bail()
+    .trim()
+    .isLength({ min: 1, max: 50 })
+    .withMessage('El modelo debe tener entre 1 y 50 caracteres'),
+
+  body('year')
+    .notEmpty()
+    .withMessage('El año del auto es requerido')
+    .bail()
+    .isInt({ min: 1900, max: new Date().getFullYear() + 1 })
+    .withMessage(`El año debe estar entre 1900 y ${new Date().getFullYear() + 1}`),
+
+  body('color')
+    .notEmpty()
+    .withMessage('El color del auto es requerido')
+    .bail()
+    .isString()
+    .withMessage('El color debe ser un texto')
+    .bail()
+    .trim()
+    .isLength({ min: 2, max: 30 })
+    .withMessage('El color debe tener entre 2 y 30 caracteres'),
+
+  body('licensePlate')
+    .optional({ nullable: true })
+    .bail()
+    .isString()
+    .withMessage('La placa debe ser un texto')
+    .bail()
+    .trim(),
+
+  body('description')
+    .optional({ nullable: true })
+    .bail()
+    .isString()
+    .withMessage('La descripción debe ser un texto')
+    .bail()
+    .trim()
+    .isLength({ max: 1000 })
+    .withMessage('La descripción no puede tener más de 1000 caracteres'),
+
+  body('modifications')
+    .optional({ nullable: true })
+    .bail()
+    .isString()
+    .withMessage('Las modificaciones deben ser un texto')
+    .bail()
+    .trim()
+    .isLength({ max: 1000 })
+    .withMessage('Las modificaciones no pueden tener más de 1000 caracteres'),
+
+  validate
+];
+
+export const listParticipantsValidator = [
+  param('id')
+    .isInt({ min: 1 })
+    .withMessage('ID de evento inválido'),
+
+  query('status')
+    .optional()
+    .bail()
+    .isIn(['PENDING', 'CONFIRMED', 'CANCELLED'])
+    .withMessage('El status debe ser PENDING, CONFIRMED o CANCELLED'),
+
+  validate
+];
+
+export const participantIdValidator = [
+  param('id')
+    .isInt({ min: 1 })
+    .withMessage('ID de evento inválido'),
+
+  param('participantId')
+    .isInt({ min: 1 })
+    .withMessage('ID de participante inválido'),
+
+  validate
+];
+
+export const updateParticipantStatusValidator = [
+  param('id')
+    .isInt({ min: 1 })
+    .withMessage('ID de evento inválido'),
+
+  param('participantId')
+    .isInt({ min: 1 })
+    .withMessage('ID de participante inválido'),
+
+  body('status')
+    .notEmpty()
+    .withMessage('El status es requerido')
+    .bail()
+    .isIn(['CONFIRMED', 'CANCELLED'])
+    .withMessage('El status debe ser CONFIRMED o CANCELLED'),
+
+  validate
+];
+
+export const getAllParticipantsValidator = [
+  query('status')
+    .optional()
+    .bail()
+    .isIn(['PENDING', 'CONFIRMED', 'CANCELLED'])
+    .withMessage('El status debe ser PENDING, CONFIRMED o CANCELLED'),
+
+  query('page')
+    .optional()
+    .bail()
+    .isInt({ min: 1 })
+    .withMessage('La página debe ser un número mayor a 0')
+    .toInt(),
+
+  query('limit')
+    .optional()
+    .bail()
+    .isInt({ min: 1, max: 100 })
+    .withMessage('El límite debe estar entre 1 y 100')
+    .toInt(),
+
+  validate
 ];
 

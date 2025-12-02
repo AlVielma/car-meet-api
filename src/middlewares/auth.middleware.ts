@@ -17,46 +17,40 @@ export class AuthMiddleware {
    */
   static authenticate(req: Request, res: Response, next: NextFunction): Response | void {
     try {
-      // Obtener el token del header Authorization
       const authHeader = req.headers.authorization;
-      
-      if (!authHeader) {
-        return ResponseUtil.unauthorized(res, 'Token de acceso no proporcionado');
+
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({
+          success: false,
+          message: 'Token no proporcionado'
+        });
       }
 
-      // Verificar formato del header (Bearer <token>)
-      if (!authHeader.startsWith('Bearer ')) {
-        return ResponseUtil.unauthorized(res, 'Formato de token inválido. Use: Bearer <token>');
+      const token = authHeader.substring(7);
+
+      const decoded = JwtUtil.verifyAccessToken(token);
+
+      if (!decoded || !decoded.userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Token inválido'
+        });
       }
 
-      // Extraer el token
-      const token = authHeader.slice(7); // Remover 'Bearer '
-      
-      if (!token) {
-        return ResponseUtil.unauthorized(res, 'Token de acceso no proporcionado');
-      }
+      // Normalizar: copiar userId a id para compatibilidad
+      (req as any).user = {
+        ...decoded,
+        id: decoded.userId // ← Agregar id como alias de userId
+      };
 
-      // Verificar el token
-      const payload = JwtUtil.verifyAccessToken(token);
-      
-      // Agregar los datos del usuario al request
-      req.user = payload;
-      
-      // Continuar con el siguiente middleware
       next();
     } catch (error: any) {
       console.error('Error en autenticación:', error);
 
-      // Manejo de errores específicos
-      if (error.message === 'TOKEN_EXPIRED') {
-        return ResponseUtil.unauthorized(res, 'El token ha expirado');
-      }
-
-      if (error.message === 'INVALID_TOKEN' || error.message === 'INVALID_TOKEN_TYPE') {
-        return ResponseUtil.unauthorized(res, 'Token de acceso inválido');
-      }
-
-      return ResponseUtil.unauthorized(res, 'Token de acceso inválido');
+      return res.status(401).json({
+        success: false,
+        message: 'Token inválido o expirado'
+      });
     }
   }
 
@@ -85,10 +79,10 @@ export class AuthMiddleware {
   static optionalAuth(req: Request, res: Response, next: NextFunction): void {
     try {
       const authHeader = req.headers.authorization;
-      
+
       if (authHeader && authHeader.startsWith('Bearer ')) {
         const token = authHeader.slice(7);
-        
+
         if (token) {
           const payload = JwtUtil.verifyAccessToken(token);
           req.user = payload;
@@ -98,7 +92,7 @@ export class AuthMiddleware {
       // En autenticación opcional, ignoramos errores de token
       console.log('Token opcional inválido, continuando sin autenticación');
     }
-    
+
     next();
   }
 }
