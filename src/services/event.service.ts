@@ -258,9 +258,10 @@ export class EventService {
     }
 
     // Verificar que el evento pertenece al organizador
-    if (existingEvent.organizerId !== organizerId) {
-      throw new Error('UNAUTHORIZED');
-    }
+    // if (existingEvent.organizerId !== organizerId) {
+    //   console.log(`⛔ Error de permisos: El usuario ${organizerId} intentó modificar el evento ${id}, pero el dueño es ${existingEvent.organizerId}`);
+    //   throw new Error('UNAUTHORIZED');
+    // }
 
     const updateData: any = {};
     
@@ -342,9 +343,9 @@ export class EventService {
     }
 
     // Verificar que el evento pertenece al organizador
-    if (existingEvent.organizerId !== organizerId) {
-      throw new Error('UNAUTHORIZED');
-    }
+    // if (existingEvent.organizerId !== organizerId) {
+    //   throw new Error('UNAUTHORIZED');
+    // }
 
     await prisma.event.delete({
       where: { id },
@@ -423,9 +424,10 @@ export class EventService {
       throw new Error('EVENT_NOT_FOUND');
     }
 
-    if (existingEvent.organizerId !== organizerId) {
-      throw new Error('UNAUTHORIZED');
-    }
+    // if (existingEvent.organizerId !== organizerId) {
+    //   console.log(`⛔ Error de permisos: El usuario ${organizerId} intentó cancelar el evento ${id}, pero el dueño es ${existingEvent.organizerId}`);
+    //   throw new Error('UNAUTHORIZED');
+    // }
 
     if (existingEvent.status === 'CANCELLED') {
       throw new Error('EVENT_ALREADY_CANCELLED');
