@@ -68,6 +68,12 @@ app.use("/api/users", userRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/cars", carRoutes);
 app.use("/api/analytics", analyticsRoutes);
+
+//codigo para servidor render 
+app.get("/healthz", (req: Request, res: Response) => {
+  res.status(200).json({ status: "ok" });
+});
+
 // Manejador de errores 404
 app.use((req: Request, res: Response) => {
   res.status(404).json({
