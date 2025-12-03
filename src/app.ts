@@ -39,6 +39,8 @@ app.use(express.urlencoded({ extended: true }));
 // ============================================
 // Servir archivos desde la carpeta uploads
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+// Servir archivos públicos (defaults, assets, etc.)
+app.use("/public", express.static(path.join(__dirname, "../public")));
 
 // También puedes agregar logs para debug (opcional)
 app.use("/uploads", (req, res, next) => {
