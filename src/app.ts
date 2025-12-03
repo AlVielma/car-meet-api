@@ -11,6 +11,9 @@ import eventRoutes from "./routes/event.routes.js";
 import carRoutes from "./routes/car.routes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
 
+// Importar seed
+import { runSeed } from "./scripts/seed.js";
+
 // Para obtener __dirname en ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -39,8 +42,6 @@ app.use(express.urlencoded({ extended: true }));
 // ============================================
 // Servir archivos desde la carpeta uploads
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
-// Servir archivos públicos (defaults, assets, etc.)
-app.use("/public", express.static(path.join(__dirname, "../public")));
 
 // También puedes agregar logs para debug (opcional)
 app.use("/uploads", (req, res, next) => {
@@ -62,17 +63,41 @@ app.get("/", (req: Request, res: Response) => {
   });
 });
 
+// ============================================
+// RUTA PROTEGIDA PARA SEED (SOLO UNA VEZ)
+// ============================================
+app.get("/run-seed", async (req: Request, res: Response) => {
+  const secret = req.query.secret as string;
+
+  if (!process.env.SEED_SECRET || secret !== process.env.SEED_SECRET) {
+    return res.status(403).json({ 
+      success: false,
+      error: "Unauthorized - Invalid or missing secret" 
+    });
+  }
+
+  try {
+    const result = await runSeed();
+    return res.json({ 
+      success: true,
+      message: "Seed ejecutado correctamente",
+      data: result
+    });
+  } catch (err: any) {
+    console.error("Error ejecutando seed:", err);
+    return res.status(500).json({ 
+      success: false,
+      error: err.message || "Error ejecutando seed"
+    });
+  }
+});
+
 // Rutas
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/cars", carRoutes);
 app.use("/api/analytics", analyticsRoutes);
-
-//codigo para servidor render 
-app.get("/healthz", (req: Request, res: Response) => {
-  res.status(200).json({ status: "ok" });
-});
 
 // Manejador de errores 404
 app.use((req: Request, res: Response) => {
