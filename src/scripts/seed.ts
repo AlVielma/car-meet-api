@@ -39,6 +39,7 @@ export async function runSeed() {
         email: 'admin@carmeet.com',
         password: hashedPassword,
         roleId: adminRole.id,
+        isActive: true,
       },
     });
 

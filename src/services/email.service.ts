@@ -1,5 +1,9 @@
-import { transporter, emailFrom } from '../configs/email.js';
-import { getActivationEmailTemplate, getActivationSuccessTemplate, getVerificationCodeTemplate } from '../templates/activation-email.template.js';
+import { resend, emailConfig } from '../configs/resend.js';
+import { 
+  getActivationEmailTemplate, 
+  getActivationSuccessTemplate, 
+  getVerificationCodeTemplate 
+} from '../templates/activation-email.template.js';
 
 export interface SendEmailOptions {
   to: string;
@@ -10,19 +14,33 @@ export interface SendEmailOptions {
 
 export class EmailService {
   /**
-   * Envía un correo electrónico
+   * Envía un correo electrónico usando Resend
    */
   static async sendEmail(options: SendEmailOptions): Promise<boolean> {
     try {
-      const info = await transporter.sendMail({
-        from: `"${emailFrom.name}" <${emailFrom.address}>`,
+      // Si no hay API key configurada, solo logea (para desarrollo)
+      if (!process.env.RESEND_API_KEY) {
+        console.log('📧 Email simulado (Resend no configurado):');
+        console.log('Para:', options.to);
+        console.log('Asunto:', options.subject);
+        console.log('---');
+        return true;
+      }
+
+      const { data, error } = await resend.emails.send({
+        from: `${emailConfig.fromName} <${emailConfig.from}>`,
         to: options.to,
         subject: options.subject,
         html: options.html,
         text: options.text || 'Por favor, habilita la visualización de HTML en tu cliente de correo.',
       });
 
-      console.log('✅ Email enviado:', info.messageId);
+      if (error) {
+        console.error('❌ Error al enviar email con Resend:', error);
+        return false;
+      }
+
+      console.log('✅ Email enviado con Resend:', data?.id);
       return true;
     } catch (error) {
       console.error('❌ Error al enviar email:', error);
