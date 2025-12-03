@@ -49,6 +49,7 @@ export async function runSeed() {
         email: 'carlosduron973@gmail.com', 
         password: hashedPassword,
         roleId: adminRole.id,
+        isActive: true,
       },
     });
 
