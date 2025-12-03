@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "tsx watch src/app.ts",
     "build": "tsc && tsc-alias",
+
     "start": "node dist/app.js",
+    "render:start": "npx prisma migrate deploy && node dist/app.js",
+    
     "test": "echo \"Error: no test specified\" && exit 1",
     "db:test": "tsx src/scripts/test-connection.ts",
     "prisma:generate": "prisma generate",
