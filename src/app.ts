@@ -11,9 +11,6 @@ import eventRoutes from "./routes/event.routes.js";
 import carRoutes from "./routes/car.routes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
 
-// Importar seed
-import { runSeed } from "./scripts/seed.js";
-
 // Para obtener __dirname en ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -61,35 +58,6 @@ app.get("/", (req: Request, res: Response) => {
       uploads: "/uploads",
     },
   });
-});
-
-// ============================================
-// RUTA PROTEGIDA PARA SEED (SOLO UNA VEZ)
-// ============================================
-app.get("/run-seed", async (req: Request, res: Response) => {
-  const secret = req.query.secret as string;
-
-  if (!process.env.SEED_SECRET || secret !== process.env.SEED_SECRET) {
-    return res.status(403).json({ 
-      success: false,
-      error: "Unauthorized - Invalid or missing secret" 
-    });
-  }
-
-  try {
-    const result = await runSeed();
-    return res.json({ 
-      success: true,
-      message: "Seed ejecutado correctamente",
-      data: result
-    });
-  } catch (err: any) {
-    console.error("Error ejecutando seed:", err);
-    return res.status(500).json({ 
-      success: false,
-      error: err.message || "Error ejecutando seed"
-    });
-  }
 });
 
 // Rutas
