@@ -74,62 +74,42 @@ export class AuthController {
     }
   }
 
-  static async activateAccount(req: Request, res: Response): Promise<Response> {
+  static async activateAccount(req: Request, res: Response): Promise<any> {
     try {
       const { token } = req.params;
 
+      const frontendUrl = process.env.NODE_ENV === 'production'
+        ? (process.env.FRONTEND_URL || 'http://localhost:8100') 
+        : 'http://localhost:8100';
+
       if (!token) {
-        return ResponseUtil.error(
-          res,
-          "Token de activación no proporcionado",
-          null,
-          400
-        );
+        return res.redirect(`${frontendUrl}/login?status=error&message=${encodeURIComponent("Token de activación no proporcionado")}`);
       }
 
-      const user = await AuthService.activateAccount(token);
+      await AuthService.activateAccount(token);
 
-      return ResponseUtil.success(
-        res,
-        "¡Tu cuenta ha sido activada exitosamente! Ya puedes iniciar sesión.",
-        user,
-        200
-      );
+      return res.redirect(`${frontendUrl}/login?status=success&message=${encodeURIComponent("¡Tu cuenta ha sido activada exitosamente! Ya puedes iniciar sesión.")}`);
+
     } catch (error: any) {
       console.error("Error en activateAccount:", error);
 
+      const frontendUrl = process.env.NODE_ENV === 'production'
+        ? (process.env.FRONTEND_URL || 'http://localhost:8100')
+        : 'http://localhost:8100';
+
+      let message = "Error al activar la cuenta";
+
       if (error.message === "TOKEN_EXPIRED") {
-        return ResponseUtil.error(
-          res,
-          "El enlace de activación ha expirado. Por favor, solicita uno nuevo.",
-          null,
-          400
-        );
+        message = "El enlace de activación ha expirado. Por favor, solicita uno nuevo.";
+      } else if (error.message === "INVALID_TOKEN") {
+        message = "El enlace de activación no es válido.";
+      } else if (error.message === "USER_NOT_FOUND") {
+        message = "Usuario no encontrado.";
+      } else if (error.message === "ACCOUNT_ALREADY_ACTIVE") {
+        message = "Esta cuenta ya ha sido activada.";
       }
 
-      if (error.message === "INVALID_TOKEN") {
-        return ResponseUtil.error(
-          res,
-          "El enlace de activación no es válido.",
-          null,
-          400
-        );
-      }
-
-      if (error.message === "USER_NOT_FOUND") {
-        return ResponseUtil.error(res, "Usuario no encontrado.", null, 404);
-      }
-
-      if (error.message === "ACCOUNT_ALREADY_ACTIVE") {
-        return ResponseUtil.error(
-          res,
-          "Esta cuenta ya ha sido activada.",
-          null,
-          400
-        );
-      }
-
-      return ResponseUtil.serverError(res, "Error al activar la cuenta", error);
+      return res.redirect(`${frontendUrl}/login?status=error&message=${encodeURIComponent(message)}`);
     }
   }
 

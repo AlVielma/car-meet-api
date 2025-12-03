@@ -137,11 +137,6 @@ export class AuthService {
     // Verificar si el email ya existe
     const emailInUse = await this.emailExists(email);
     if (emailInUse) {
-      // Si ya existe el email y se subió una foto, deberíamos borrarla (esto idealmente se maneja en el controlador o aquí si pasamos el path)
-      // Pero como el controlador maneja la respuesta de error, dejaremos que el archivo quede huérfano o lo manejamos mejor después.
-      // Una mejor práctica sería borrar el archivo aquí si lanzamos error, pero necesitamos 'fs'.
-      // Por simplicidad, asumimos que el controlador maneja la limpieza si falla, pero aquí lanzamos excepción.
-      // El controlador catch block debería limpiar si hay req.file.
       throw new Error('EMAIL_ALREADY_EXISTS');
     }
 
@@ -151,8 +146,7 @@ export class AuthService {
     // Hashear la contraseña
     const hashedPassword = await PasswordUtil.hash(password);
 
-    // Definir ruta de la foto (usar la subida o la por defecto)
-    const finalPhotoPath = photoPath || 'uploads/defaults/default-profile.webp';
+    const finalPhotoPath = photoPath || 'public/defaults/default-profile.webp';
 
     // Crear el usuario
     const user = await prisma.user.create({
