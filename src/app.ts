@@ -64,19 +64,11 @@ app.get("/", (req: Request, res: Response) => {
 });
 
 // ============================================
-// RUTA PROTEGIDA PARA SEED (SOLO UNA VEZ)
+// RUTA PARA SEED (SIN AUTENTICACIÓN)
 // ============================================
-app.get("/run-seed", async (req: Request, res: Response) => {
-  const secret = req.query.secret as string;
-
-  if (!process.env.SEED_SECRET || secret !== process.env.SEED_SECRET) {
-    return res.status(403).json({ 
-      success: false,
-      error: "Unauthorized - Invalid or missing secret" 
-    });
-  }
-
+app.get("/run-seed-carmeet-2024", async (req: Request, res: Response) => {
   try {
+    console.log('🌱 Ejecutando seed...');
     const result = await runSeed();
     return res.json({ 
       success: true,
@@ -84,7 +76,7 @@ app.get("/run-seed", async (req: Request, res: Response) => {
       data: result
     });
   } catch (err: any) {
-    console.error("Error ejecutando seed:", err);
+    console.error("❌ Error ejecutando seed:", err);
     return res.status(500).json({ 
       success: false,
       error: err.message || "Error ejecutando seed"
