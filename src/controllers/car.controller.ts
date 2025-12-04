@@ -67,6 +67,8 @@ export class CarController {
 
       const { brand, model, year, color, licensePlate, description, modifications } = req.body;
       const userId = req.user?.userId; // Del middleware de autenticación
+      // Guardar la ruta relativa completa para que getFullUrl funcione correctamente
+      const photoPath = req.file ? `uploads/cars/${req.file.filename}` : undefined;
 
       if (!userId) {
         return ResponseUtil.unauthorized(res, 'Usuario no autenticado');
@@ -81,6 +83,7 @@ export class CarController {
         licensePlate,
         description,
         modifications,
+        photoPath,
       });
 
       return ResponseUtil.success(
@@ -115,6 +118,8 @@ export class CarController {
       }
 
       const { brand, model, year, color, licensePlate, description, modifications } = req.body;
+      // Guardar la ruta relativa completa para que getFullUrl funcione correctamente
+      const photoPath = req.file ? `uploads/cars/${req.file.filename}` : undefined;
 
       const updateData: any = {
         brand,
@@ -123,6 +128,7 @@ export class CarController {
         licensePlate,
         description,
         modifications,
+        photoPath,
       };
 
       if (year) {

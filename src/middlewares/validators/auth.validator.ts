@@ -122,3 +122,35 @@ export const resendCodeValidator = [
     .toLowerCase(),
 ];
 
+export const updateProfileValidator = [
+  body("firstName")
+    .optional()
+    .bail()
+    .isString()
+    .withMessage("El nombre debe ser un texto")
+    .bail()
+    .trim()
+    .isLength({ min: 2, max: 50 })
+    .withMessage("El nombre debe tener entre 2 y 50 caracteres"),
+
+  body("lastName")
+    .optional()
+    .bail()
+    .isString()
+    .withMessage("El apellido debe ser un texto")
+    .bail()
+    .trim()
+    .isLength({ min: 2, max: 50 })
+    .withMessage("El apellido debe tener entre 2 y 50 caracteres"),
+
+  body("phone")
+    .optional()
+    .bail()
+    .isString()
+    .withMessage("El teléfono debe ser un texto")
+    .bail()
+    .trim()
+    .matches(/^[0-9]{10}$/)
+    .withMessage("El teléfono debe tener 10 dígitos"),
+];
+

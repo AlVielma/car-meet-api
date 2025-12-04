@@ -1,5 +1,7 @@
 import prisma from '../configs/database.js';
 import { PasswordUtil } from '../utils/password.util.js';
+import { PhotoType } from '@prisma/client';
+import fs from 'fs';
 
 export interface CreateUserData {
   firstName: string;
@@ -8,6 +10,7 @@ export interface CreateUserData {
   phone?: string;
   password: string;
   roleId?: number;
+  photoPath?: string;
 }
 
 export interface UpdateUserData {
@@ -17,6 +20,7 @@ export interface UpdateUserData {
   phone?: string;
   password?: string;
   roleId?: number;
+  photoPath?: string;
 }
 
 export interface UserResponse {
@@ -33,6 +37,7 @@ export interface UserResponse {
     name: string;
     slug: string;
   };
+  profilePhoto: string;
 }
 
 export interface PaginatedUsersResponse {
@@ -46,6 +51,28 @@ export interface PaginatedUsersResponse {
 }
 
 export class UserService {
+  private static getProfilePhotoUrl(photos: any[]): string {
+    const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+    const rawPhotoPath = photos && photos.length > 0 ? photos[0].url : 'public/defaults/default-profile.webp';
+    const cleanPath = rawPhotoPath.startsWith('/') ? rawPhotoPath.substring(1) : rawPhotoPath;
+    return `${baseUrl}/${cleanPath}`;
+  }
+
+  private static mapUserToResponse(user: any): UserResponse {
+    return {
+      id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      phone: user.phone,
+      isActive: user.isActive,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      role: user.role,
+      profilePhoto: this.getProfilePhotoUrl(user.photos)
+    };
+  }
+
   static async getAllUsers(page: number = 1, limit: number = 10, isActive?: boolean): Promise<PaginatedUsersResponse> {
     const skip = (page - 1) * limit;
     
@@ -72,6 +99,11 @@ export class UserService {
               slug: true,
             },
           },
+          photos: {
+            where: { type: PhotoType.PROFILE, isMain: true },
+            take: 1,
+            select: { url: true }
+          }
         },
         orderBy: {
           createdAt: 'desc',
@@ -81,7 +113,7 @@ export class UserService {
     ]);
 
     return {
-      users,
+      users: users.map(user => this.mapUserToResponse(user)),
       pagination: {
         page,
         limit,
@@ -110,6 +142,11 @@ export class UserService {
             slug: true,
           },
         },
+        photos: {
+          where: { type: PhotoType.PROFILE, isMain: true },
+          take: 1,
+          select: { url: true }
+        }
       },
     });
 
@@ -117,11 +154,11 @@ export class UserService {
       throw new Error('USER_NOT_FOUND');
     }
 
-    return user;
+    return this.mapUserToResponse(user);
   }
 
   static async createUser(data: CreateUserData): Promise<UserResponse> {
-    const { firstName, lastName, email, phone, password, roleId } = data;
+    const { firstName, lastName, email, phone, password, roleId, photoPath } = data;
 
     const existingUser = await prisma.user.findUnique({
       where: { email },
@@ -152,6 +189,7 @@ export class UserService {
     }
 
     const hashedPassword = await PasswordUtil.hash(password);
+    const finalPhotoPath = photoPath || 'public/defaults/default-profile.webp';
 
     const user = await prisma.user.create({
       data: {
@@ -162,6 +200,13 @@ export class UserService {
         password: hashedPassword,
         roleId: finalRoleId,
         isActive: true,
+        photos: {
+          create: {
+            url: finalPhotoPath,
+            type: PhotoType.PROFILE,
+            isMain: true
+          }
+        }
       },
       select: {
         id: true,
@@ -179,15 +224,25 @@ export class UserService {
             slug: true,
           },
         },
+        photos: {
+          where: { type: PhotoType.PROFILE, isMain: true },
+          take: 1,
+          select: { url: true }
+        }
       },
     });
 
-    return user;
+    return this.mapUserToResponse(user);
   }
 
   static async updateUser(id: number, data: UpdateUserData): Promise<UserResponse> {
     const existingUser = await prisma.user.findUnique({
       where: { id },
+      include: {
+        photos: {
+          where: { type: PhotoType.PROFILE, isMain: true }
+        }
+      }
     });
 
     if (!existingUser) {
@@ -201,6 +256,40 @@ export class UserService {
 
       if (emailExists) {
         throw new Error('EMAIL_ALREADY_EXISTS');
+      }
+    }
+
+    // Manejo de la foto de perfil
+    if (data.photoPath) {
+      const currentPhoto = existingUser.photos[0];
+      
+      if (currentPhoto) {
+        // Si existe una foto anterior y no es la por defecto, eliminar el archivo físico
+        if (currentPhoto.url && !currentPhoto.url.includes('defaults/')) {
+          try {
+            if (fs.existsSync(currentPhoto.url)) {
+              fs.unlinkSync(currentPhoto.url);
+            }
+          } catch (error) {
+            console.error('Error al eliminar foto anterior:', error);
+          }
+        }
+
+        // Actualizar el registro de la foto
+        await prisma.photo.update({
+          where: { id: currentPhoto.id },
+          data: { url: data.photoPath }
+        });
+      } else {
+        // Si no tenía foto, crear una nueva
+        await prisma.photo.create({
+          data: {
+            url: data.photoPath,
+            type: PhotoType.PROFILE,
+            isMain: true,
+            userId: id
+          }
+        });
       }
     }
 
@@ -235,10 +324,15 @@ export class UserService {
             slug: true,
           },
         },
+        photos: {
+          where: { type: PhotoType.PROFILE, isMain: true },
+          take: 1,
+          select: { url: true }
+        }
       },
     });
 
-    return user;
+    return this.mapUserToResponse(user);
   }
 
   static async activateUser(id: number): Promise<UserResponse> {
@@ -273,10 +367,15 @@ export class UserService {
             slug: true,
           },
         },
+        photos: {
+          where: { type: PhotoType.PROFILE, isMain: true },
+          take: 1,
+          select: { url: true }
+        }
       },
     });
 
-    return updatedUser;
+    return this.mapUserToResponse(updatedUser);
   }
 
   static async deactivateUser(id: number): Promise<UserResponse> {
@@ -311,10 +410,15 @@ export class UserService {
             slug: true,
           },
         },
+        photos: {
+          where: { type: PhotoType.PROFILE, isMain: true },
+          take: 1,
+          select: { url: true }
+        }
       },
     });
 
-    return updatedUser;
+    return this.mapUserToResponse(updatedUser);
   }
 
   static async toggleUserStatus(id: number): Promise<UserResponse> {
@@ -345,10 +449,15 @@ export class UserService {
             slug: true,
           },
         },
+        photos: {
+          where: { type: PhotoType.PROFILE, isMain: true },
+          take: 1,
+          select: { url: true }
+        }
       },
     });
 
-    return updatedUser;
+    return this.mapUserToResponse(updatedUser);
   }
 }
 

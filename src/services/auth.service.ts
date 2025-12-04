@@ -3,6 +3,7 @@ import { PasswordUtil } from '../utils/password.util.js';
 import { JwtUtil } from '../utils/jwt.util.js';
 import { EmailService } from './email.service.js';
 import { PhotoType } from '@prisma/client';
+import fs from 'fs';
 
 export interface RegisterData {
   firstName: string;
@@ -62,6 +63,38 @@ export interface ResendCodeData {
 export interface ResendCodeResponse {
   message: string;
   email: string;
+}
+
+export interface UpdateProfileData {
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  photoPath?: string;
+}
+
+export interface UserProfileResponse {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string | null;
+  isActive: boolean;
+  createdAt: Date;
+  role: {
+    id: number;
+    name: string;
+    slug: string;
+  };
+  profilePhoto: string;
+  totalEvents: number;
+  totalCars: number;
+  totalVotes: number;
+  totalPhotos: number;
+  recentActivity: {
+    type: string;
+    title: string;
+    date: Date;
+  }[];
 }
 
 export class AuthService {
@@ -507,19 +540,78 @@ export class AuthService {
   }
 
   /**
-   * Obtiene los datos del usuario actual por ID
+   * Actualiza el perfil del usuario autenticado
    */
-  static async getCurrentUser(userId: number): Promise<RegisterResponse> {
+  static async updateProfile(userId: number, data: UpdateProfileData): Promise<UserProfileResponse> {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        phone: true,
-        isActive: true,
-        createdAt: true,
+      include: {
+        photos: {
+          where: { type: PhotoType.PROFILE, isMain: true }
+        }
+      }
+    });
+
+    if (!user) {
+      throw new Error('USER_NOT_FOUND');
+    }
+
+    // Manejo de la foto de perfil
+    if (data.photoPath) {
+      const currentPhoto = user.photos[0];
+      
+      if (currentPhoto) {
+        // Si existe una foto anterior y no es la por defecto, eliminar el archivo físico
+        if (currentPhoto.url && !currentPhoto.url.includes('defaults/')) {
+          try {
+            if (fs.existsSync(currentPhoto.url)) {
+              fs.unlinkSync(currentPhoto.url);
+            }
+          } catch (error) {
+            console.error('Error al eliminar foto anterior:', error);
+          }
+        }
+
+        // Actualizar el registro de la foto
+        await prisma.photo.update({
+          where: { id: currentPhoto.id },
+          data: { url: data.photoPath }
+        });
+      } else {
+        // Si no tenía foto, crear una nueva
+        await prisma.photo.create({
+          data: {
+            url: data.photoPath,
+            type: PhotoType.PROFILE,
+            isMain: true,
+            userId: userId
+          }
+        });
+      }
+    }
+
+    const updateData: any = {};
+    
+    if (data.firstName) updateData.firstName = data.firstName;
+    if (data.lastName) updateData.lastName = data.lastName;
+    if (data.phone !== undefined) updateData.phone = data.phone || null;
+    
+    await prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+    });
+
+    // Devolver el perfil actualizado usando el método existente
+    return this.getCurrentUser(userId);
+  }
+
+  /**
+   * Obtiene los datos del usuario actual por ID con estadísticas y actividad
+   */
+  static async getCurrentUser(userId: number): Promise<UserProfileResponse> {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
         role: {
           select: {
             id: true,
@@ -527,6 +619,20 @@ export class AuthService {
             slug: true,
           },
         },
+        photos: {
+          where: { type: PhotoType.PROFILE, isMain: true },
+          take: 1,
+          select: { url: true }
+        },
+        _count: {
+          select: {
+            organizedEvents: true,
+            participations: true,
+            cars: true,
+            votes: true,
+            photos: true
+          }
+        }
       },
     });
 
@@ -538,7 +644,70 @@ export class AuthService {
       throw new Error('ACCOUNT_NOT_ACTIVATED');
     }
 
-    return user;
+    // Obtener actividad reciente (últimos 5 de cada tipo)
+    const [recentParticipations, recentVotes, recentCars] = await Promise.all([
+      prisma.eventParticipant.findMany({
+        where: { userId },
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        include: { event: { select: { name: true } } }
+      }),
+      prisma.vote.findMany({
+        where: { voterId: userId },
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        include: { car: { select: { brand: true, model: true } } }
+      }),
+      prisma.car.findMany({
+        where: { userId },
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        select: { brand: true, model: true, createdAt: true }
+      })
+    ]);
+
+    // Combinar y ordenar actividades
+    const activities = [
+      ...recentParticipations.map(p => ({
+        type: 'event',
+        title: `Te uniste al evento ${p.event.name}`,
+        date: p.createdAt
+      })),
+      ...recentVotes.map(v => ({
+        type: 'vote',
+        title: `Votaste por ${v.car.brand} ${v.car.model}`,
+        date: v.createdAt
+      })),
+      ...recentCars.map(c => ({
+        type: 'car',
+        title: `Agregaste un ${c.brand} ${c.model}`,
+        date: c.createdAt
+      }))
+    ].sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 10);
+
+    // Determinar foto de perfil y construir URL completa
+    const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+    const rawPhotoPath = user.photos[0]?.url || 'public/defaults/default-profile.webp';
+    // Asegurar que la ruta no empiece con / para evitar doble slash
+    const cleanPath = rawPhotoPath.startsWith('/') ? rawPhotoPath.substring(1) : rawPhotoPath;
+    const profilePhoto = `${baseUrl}/${cleanPath}`;
+
+    return {
+      id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      phone: user.phone,
+      isActive: user.isActive,
+      createdAt: user.createdAt,
+      role: user.role,
+      profilePhoto,
+      totalEvents: user._count.organizedEvents + user._count.participations,
+      totalCars: user._count.cars,
+      totalVotes: user._count.votes,
+      totalPhotos: user._count.photos,
+      recentActivity: activities
+    };
   }
 }
 

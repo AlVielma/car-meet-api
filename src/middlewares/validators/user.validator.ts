@@ -110,7 +110,7 @@ export const updateUserValidator = [
     .withMessage("El teléfono debe tener 10 dígitos"),
 
   body("password")
-    .optional()
+    .optional({ checkFalsy: true })
     .bail()
     .isString()
     .withMessage("La contraseña debe ser un texto")

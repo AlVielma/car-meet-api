@@ -5,6 +5,7 @@ import {
   loginValidator,
   verifyCodeValidator,
   resendCodeValidator,
+  updateProfileValidator,
 } from "../middlewares/validators/auth.validator.js";
 import { AuthMiddleware } from "../middlewares/auth.middleware.js";
 import { uploadProfilePhoto, resizeProfilePhoto } from "../middlewares/upload.middleware.js";
@@ -52,6 +53,19 @@ router.post("/resend-code", resendCodeValidator, AuthController.resendCode);
  * @access  Private
  */
 router.get("/me", AuthMiddleware.authenticate, AuthController.me);
+
+/**
+ * @route   PUT /api/auth/me
+ * @desc    Actualizar perfil del usuario autenticado
+ * @access  Private
+ */
+router.put("/me", 
+  AuthMiddleware.authenticate, 
+  uploadProfilePhoto.single('photo'), 
+  resizeProfilePhoto, 
+  updateProfileValidator, 
+  AuthController.updateProfile
+);
 
 /**
  * @route   POST /api/auth/logout

@@ -330,6 +330,65 @@ export class AuthController {
     }
   }
 
+  /**
+   * Actualizar perfil del usuario autenticado
+   */
+  static async updateProfile(req: Request, res: Response): Promise<Response> {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        // Si hay errores de validación y se subió una imagen, la eliminamos
+        if (req.file) {
+          fs.unlinkSync(req.file.path);
+        }
+        return ResponseUtil.validationError(res, errors.array());
+      }
+
+      if (!req.user) {
+        if (req.file) fs.unlinkSync(req.file.path);
+        return ResponseUtil.unauthorized(res, "Usuario no autenticado");
+      }
+
+      const { firstName, lastName, phone } = req.body;
+      const photoPath = req.file ? req.file.path : undefined;
+
+      const updateData: any = {
+        firstName,
+        lastName,
+        phone,
+        photoPath
+      };
+
+      const user = await AuthService.updateProfile(req.user.userId, updateData);
+
+      return ResponseUtil.success(
+        res,
+        "Perfil actualizado exitosamente",
+        user,
+        200
+      );
+    } catch (error: any) {
+      console.error("Error en updateProfile:", error);
+
+      // Si hubo un error y se subió un archivo, eliminarlo
+      if (req.file) {
+        try {
+          if (fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+          }
+        } catch (unlinkError) {
+          console.error("Error al eliminar archivo tras fallo en actualización:", unlinkError);
+        }
+      }
+
+      if (error.message === "USER_NOT_FOUND") {
+        return ResponseUtil.error(res, "Usuario no encontrado", null, 404);
+      }
+
+      return ResponseUtil.serverError(res, "Error al actualizar el perfil", error);
+    }
+  }
+
   static async logout(req: Request, res: Response): Promise<Response> {
     try {
       // Si usas cookie para el token, límpiala (ajusta el nombre de la cookie)

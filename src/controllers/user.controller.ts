@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
+import fs from 'fs';
 import { ResponseUtil } from '../utils/response.util.js';
 import { UserService } from '../services/user.service.js';
 
@@ -60,10 +61,15 @@ export class UserController {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
+        // Si hay errores de validación y se subió una imagen, la eliminamos
+        if (req.file) {
+          fs.unlinkSync(req.file.path);
+        }
         return ResponseUtil.validationError(res, errors.array());
       }
 
       const { firstName, lastName, email, phone, password, roleId } = req.body;
+      const photoPath = req.file ? req.file.path : undefined;
 
       const userData: any = {
         firstName,
@@ -71,6 +77,7 @@ export class UserController {
         email,
         phone,
         password,
+        photoPath
       };
 
       if (roleId) {
@@ -88,6 +95,17 @@ export class UserController {
     } catch (error: any) {
       console.error('Error en createUser:', error);
 
+      // Si hubo un error y se subió un archivo, eliminarlo
+      if (req.file) {
+        try {
+          if (fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+          }
+        } catch (unlinkError) {
+          console.error("Error al eliminar archivo tras fallo en creación:", unlinkError);
+        }
+      }
+
       if (error.message === 'EMAIL_ALREADY_EXISTS') {
         return ResponseUtil.error(res, 'El email ya está registrado', null, 409);
       }
@@ -100,11 +118,16 @@ export class UserController {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
+        // Si hay errores de validación y se subió una imagen, la eliminamos
+        if (req.file) {
+          fs.unlinkSync(req.file.path);
+        }
         return ResponseUtil.validationError(res, errors.array());
       }
 
       const id = parseInt(req.params.id as string);
       const { firstName, lastName, email, phone, password, roleId } = req.body;
+      const photoPath = req.file ? req.file.path : undefined;
 
       const updateData: any = {
         firstName,
@@ -112,6 +135,7 @@ export class UserController {
         email,
         phone,
         password,
+        photoPath
       };
 
       if (roleId) {
@@ -128,6 +152,17 @@ export class UserController {
       );
     } catch (error: any) {
       console.error('Error en updateUser:', error);
+
+      // Si hubo un error y se subió un archivo, eliminarlo
+      if (req.file) {
+        try {
+          if (fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+          }
+        } catch (unlinkError) {
+          console.error("Error al eliminar archivo tras fallo en actualización:", unlinkError);
+        }
+      }
 
       if (error.message === 'USER_NOT_FOUND') {
         return ResponseUtil.error(res, 'Usuario no encontrado', null, 404);

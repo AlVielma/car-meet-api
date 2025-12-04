@@ -1,6 +1,14 @@
 import { body, param, query } from 'express-validator';
 
 export const createCarValidator = [
+  body('image')
+    .custom((value, { req }) => {
+      if (!req.file) {
+        throw new Error('La imagen del auto es requerida');
+      }
+      return true;
+    }),
+
   body('brand')
     .notEmpty()
     .withMessage('La marca es requerida')

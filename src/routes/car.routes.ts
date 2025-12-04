@@ -7,11 +7,13 @@ import {
   getCarsValidator
 } from '../middlewares/validators/car.validator.js';
 import { AuthMiddleware } from '../middlewares/auth.middleware.js';
+import { uploadCarPhoto, resizeCarPhoto } from '../middlewares/upload.middleware.js';
 
 const router = Router();
 
 // Obtener todos los autos con filtros opcionales
 router.get('/', getCarsValidator, CarController.getAllCars);
+
 
 // Obtener autos del usuario autenticado
 router.get('/my-cars', AuthMiddleware.authenticate, CarController.getUserCars);
@@ -19,11 +21,24 @@ router.get('/my-cars', AuthMiddleware.authenticate, CarController.getUserCars);
 // Obtener un auto por ID
 router.get('/:id', carIdValidator, CarController.getCarById);
 
+
 // Crear un auto (requiere autenticación)
-router.post('/', AuthMiddleware.authenticate, createCarValidator, CarController.createCar);
+router.post('/', 
+  AuthMiddleware.authenticate, 
+  uploadCarPhoto.single('image'),
+  resizeCarPhoto,
+  createCarValidator, 
+  CarController.createCar
+);
 
 // Actualizar un auto (requiere autenticación y ser propietario)
-router.put('/:id', AuthMiddleware.authenticate, updateCarValidator, CarController.updateCar);
+router.put('/:id', 
+  AuthMiddleware.authenticate, 
+  uploadCarPhoto.single('image'),
+  resizeCarPhoto,
+  updateCarValidator, 
+  CarController.updateCar
+);
 
 // Eliminar un auto (requiere autenticación y ser propietario)
 router.delete('/:id', AuthMiddleware.authenticate, carIdValidator, CarController.deleteCar);

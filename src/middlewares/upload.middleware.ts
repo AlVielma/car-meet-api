@@ -4,11 +4,15 @@ import fs from 'fs';
 import sharp from 'sharp';
 import { Request, Response, NextFunction } from 'express';
 
-// Asegurarse de que el directorio de subida exista
-const uploadDir = 'uploads/profiles';
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+// Asegurarse de que los directorios de subida existan
+const profileUploadDir = 'uploads/profiles';
+const carUploadDir = 'uploads/cars';
+
+[profileUploadDir, carUploadDir].forEach(dir => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+});
 
 // Usamos memoryStorage para tener el buffer disponible para sharp
 const storage = multer.memoryStorage();
@@ -26,7 +30,15 @@ export const uploadProfilePhoto = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 10 * 1024 * 1024 // Límite de 10MB de entrada
+    fileSize: 10 * 1024 * 1024 // Límite de 10MB
+  }
+});
+
+export const uploadCarPhoto = multer({ 
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // Límite de 10MB
   }
 });
 
@@ -39,7 +51,7 @@ export const resizeProfilePhoto = async (req: Request, res: Response, next: Next
   // Generar nombre de archivo único
   const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
   const filename = `profile-${uniqueSuffix}.webp`;
-  const filepath = path.join(uploadDir, filename);
+  const filepath = path.join(profileUploadDir, filename);
 
   try {
     await sharp(req.file.buffer)
@@ -58,7 +70,37 @@ export const resizeProfilePhoto = async (req: Request, res: Response, next: Next
     
     next();
   } catch (error) {
-    console.error('Error al procesar imagen:', error);
+    console.error('Error al procesar imagen de perfil:', error);
+    next(error);
+  }
+};
+
+export const resizeCarPhoto = async (req: Request, res: Response, next: NextFunction) => {
+  if (!req.file) return next();
+
+  // Generar nombre de archivo único
+  const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+  const filename = `car-${uniqueSuffix}.webp`;
+  const filepath = path.join(carUploadDir, filename);
+
+  try {
+    await sharp(req.file.buffer)
+      .resize(1200, 800, { // Autos en mayor resolución
+        fit: 'inside', // Mantener proporción, no recortar
+        withoutEnlargement: true
+      })
+      .toFormat('webp')
+      .webp({ quality: 85 })
+      .toFile(filepath);
+
+    // Actualizar req.file para que el controlador use el archivo procesado
+    req.file.filename = filename;
+    req.file.path = filepath;
+    req.file.mimetype = 'image/webp';
+    
+    next();
+  } catch (error) {
+    console.error('Error al procesar imagen de auto:', error);
     next(error);
   }
 };

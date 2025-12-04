@@ -5,19 +5,21 @@ export interface CreateCarDto {
   model: string;
   year: number;
   color: string;
-  licensePlate?: string;
-  description?: string;
-  modifications?: string;
+  licensePlate?: string | undefined;
+  description?: string | undefined;
+  modifications?: string | undefined;
+  photoPath?: string | undefined;
 }
 
 export interface UpdateCarDto {
-  brand?: string;
-  model?: string;
-  year?: number;
-  color?: string;
-  licensePlate?: string;
-  description?: string;
-  modifications?: string;
+  brand?: string | undefined;
+  model?: string | undefined;
+  year?: number | undefined;
+  color?: string | undefined;
+  licensePlate?: string | undefined;
+  description?: string | undefined;
+  modifications?: string | undefined;
+  photoPath?: string | undefined;
 }
 
 // Tipos de respuesta
