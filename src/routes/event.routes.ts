@@ -11,7 +11,7 @@ import {
   updateParticipantStatusValidator
 } from '../middlewares/validators/event.validator.js';
 import { AuthMiddleware } from '../middlewares/auth.middleware.js';
-import { uploadProfilePhoto, resizeProfilePhoto } from '../middlewares/upload.middleware.js';
+import { uploadProfilePhoto, resizeProfilePhoto, uploadEventPhoto, resizeEventPhoto, uploadCarPhoto, resizeCarPhoto } from '../middlewares/upload.middleware.js';
 
 const router = Router();
 
@@ -32,6 +32,9 @@ router.get('/', getEventsValidator, EventController.getAllEvents);
 // Obtener eventos del usuario autenticado
 router.get('/my-events', AuthMiddleware.authenticate, EventController.getUserEvents);
 
+// Obtener eventos donde participa el usuario autenticado
+router.get('/my-participations', AuthMiddleware.authenticate, EventController.getUserParticipations);
+
 // Obtener todos los participantes pendientes
 router.get('/participants/pending',AuthMiddleware.authenticate,EventController.getAllParticipants);
 
@@ -45,13 +48,25 @@ router.get('/:id/participants', listParticipantsValidator, EventController.getEv
 router.get('/:id/participants/:participantId',AuthMiddleware.authenticate,participantIdValidator,EventController.getParticipantById);
 
 // Crear un evento (requiere autenticación)
-router.post('/', AuthMiddleware.authenticate, createEventValidator, EventController.createEvent);
+router.post('/', 
+  AuthMiddleware.authenticate, 
+  uploadEventPhoto.single('image'),
+  resizeEventPhoto,
+  createEventValidator, 
+  EventController.createEvent
+);
 
 // Participar en un evento (usuario autenticado)
-router.post('/:id/participate',AuthMiddleware.authenticate,uploadProfilePhoto.single('photo'),resizeProfilePhoto,participateEventValidator,EventController.participateInEvent);
+router.post('/:id/participate',AuthMiddleware.authenticate,uploadCarPhoto.single('image'),resizeCarPhoto,participateEventValidator,EventController.participateInEvent);
 
 // Actualizar un evento
-router.put('/:id', AuthMiddleware.authenticate, updateEventValidator, EventController.updateEvent);
+router.put('/:id', 
+  AuthMiddleware.authenticate, 
+  uploadEventPhoto.single('image'),
+  resizeEventPhoto,
+  updateEventValidator, 
+  EventController.updateEvent
+);
 
 // Cancelar un evento
 router.patch('/:id/cancel', AuthMiddleware.authenticate, eventIdValidator, EventController.cancelEvent);

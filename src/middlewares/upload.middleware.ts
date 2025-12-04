@@ -7,8 +7,9 @@ import { Request, Response, NextFunction } from 'express';
 // Asegurarse de que los directorios de subida existan
 const profileUploadDir = 'uploads/profiles';
 const carUploadDir = 'uploads/cars';
+const eventUploadDir = 'uploads/events';
 
-[profileUploadDir, carUploadDir].forEach(dir => {
+[profileUploadDir, carUploadDir, eventUploadDir].forEach(dir => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
@@ -35,6 +36,14 @@ export const uploadProfilePhoto = multer({
 });
 
 export const uploadCarPhoto = multer({ 
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // Límite de 10MB
+  }
+});
+
+export const uploadEventPhoto = multer({ 
   storage: storage,
   fileFilter: fileFilter,
   limits: {
@@ -101,6 +110,36 @@ export const resizeCarPhoto = async (req: Request, res: Response, next: NextFunc
     next();
   } catch (error) {
     console.error('Error al procesar imagen de auto:', error);
+    next(error);
+  }
+};
+
+export const resizeEventPhoto = async (req: Request, res: Response, next: NextFunction) => {
+  if (!req.file) return next();
+
+  // Generar nombre de archivo único
+  const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+  const filename = `event-${uniqueSuffix}.webp`;
+  const filepath = path.join(eventUploadDir, filename);
+
+  try {
+    await sharp(req.file.buffer)
+      .resize(1200, 675, { // 16:9 para eventos
+        fit: 'cover',
+        position: 'center'
+      })
+      .toFormat('webp')
+      .webp({ quality: 85 })
+      .toFile(filepath);
+
+    // Actualizar req.file para que el controlador use el archivo procesado
+    req.file.filename = filename;
+    req.file.path = filepath;
+    req.file.mimetype = 'image/webp';
+    
+    next();
+  } catch (error) {
+    console.error('Error al procesar imagen de evento:', error);
     next(error);
   }
 };

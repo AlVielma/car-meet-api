@@ -67,6 +67,8 @@ export class EventController {
 
       const { name, description, location, date, startTime, endTime } = req.body;
       const organizerId = req.user?.userId;
+      // Guardar la ruta relativa completa para que getFullUrl funcione correctamente
+      const photoPath = req.file ? `uploads/events/${req.file.filename}` : undefined;
 
       if (!organizerId) {
         return ResponseUtil.unauthorized(res, 'Usuario no autenticado');
@@ -79,6 +81,7 @@ export class EventController {
         location,
         date: new Date(date),
         startTime: new Date(startTime),
+        photoPath,
       };
 
       if (endTime) {
@@ -121,12 +124,15 @@ export class EventController {
       }
 
       const { name, description, location, date, startTime, endTime, status } = req.body;
+      // Guardar la ruta relativa completa para que getFullUrl funcione correctamente
+      const photoPath = req.file ? `uploads/events/${req.file.filename}` : undefined;
 
       const updateData: any = {
         name,
         description,
         location,
         status,
+        photoPath,
       };
 
       if (date) updateData.date = new Date(date);
@@ -215,6 +221,28 @@ export class EventController {
     }
   }
 
+  static async getUserParticipations(req: Request, res: Response): Promise<Response> {
+    try {
+      const userId = req.user?.userId;
+
+      if (!userId) {
+        return ResponseUtil.unauthorized(res, 'Usuario no autenticado');
+      }
+
+      const participations = await EventService.getUserParticipations(userId);
+
+      return ResponseUtil.success(
+        res,
+        'Participaciones del usuario obtenidas exitosamente',
+        participations,
+        200
+      );
+    } catch (error: any) {
+      console.error('Error en getUserParticipations:', error);
+      return ResponseUtil.serverError(res, 'Error al obtener las participaciones del usuario', error);
+    }
+  }
+
   static async cancelEvent(req: Request, res: Response): Promise<Response> {
     try {
       const errors = validationResult(req);
@@ -274,51 +302,65 @@ export class EventController {
 
       const userId = user.userId;
       const eventId = Number(req.params.id);
+      const carId = req.body.carId ? Number(req.body.carId) : undefined;
 
       // Log para debug (puedes quitarlo después)
       console.log('User ID:', userId);
       console.log('Event ID:', eventId);
+      if (carId) console.log('Car ID:', carId);
 
-      const {
-        brand,
-        model,
-        year,
-        color,
-        licensePlate,
-        description,
-        modifications
-      } = req.body;
+      let participant;
 
-      // Obtener URL de foto desde el archivo subido
-      const file = (req as any).file as Express.Multer.File | undefined;
-
-      if (!file || !file.path) {
-        return res.status(400).json({
-          success: false,
-          message: 'La foto del auto es requerida'
+      if (carId) {
+        // Opción 1: Usar auto existente
+        participant = await EventService.participateInEvent({
+          userId,
+          eventId,
+          carId
         });
-      }
-
-      const photoUrl = file.path;
-
-      // Log para debug
-      console.log('Photo URL:', photoUrl);
-      console.log('Car data:', { brand, model, year, color });
-
-      const participant = await EventService.participateInEvent({
-        userId,
-        eventId,
-        car: {
+      } else {
+        // Opción 2: Crear nuevo auto
+        const {
           brand,
           model,
-          year: Number(year),
+          year,
           color,
-          licensePlate: licensePlate || null,
-          description: description || null,
-          modifications: modifications || null
-        },
-        photoUrl
-      });
+          licensePlate,
+          description,
+          modifications
+        } = req.body;
+
+        // Obtener URL de foto desde el archivo subido
+        const file = (req as any).file as Express.Multer.File | undefined;
+
+        if (!file || !file.path) {
+          return res.status(400).json({
+            success: false,
+            message: 'La foto del auto es requerida para nuevos vehículos'
+          });
+        }
+
+        const photoUrl = file.path;
+
+        // Log para debug
+        console.log('Photo URL:', photoUrl);
+        console.log('Car data:', { brand, model, year, color });
+
+        participant = await EventService.participateInEvent({
+          userId,
+          eventId,
+          car: {
+            brand,
+            model,
+            year: Number(year),
+            color,
+            licensePlate: licensePlate || null,
+            description: description || null,
+            modifications: modifications || null
+          },
+          photoUrl
+        });
+      }
 
       return res.status(201).json({
         success: true,
@@ -333,7 +375,10 @@ export class EventController {
         EVENT_CANCELLED: 'El evento ha sido cancelado',
         EVENT_FINISHED: 'El evento ya ha finalizado',
         USER_ALREADY_PARTICIPATING: 'Ya has enviado una solicitud para este evento',
-        DUPLICATE_PARTICIPATION: 'Ya existe una participación con estos datos'
+        DUPLICATE_PARTICIPATION: 'Ya existe una participación con estos datos',
+        CAR_NOT_FOUND: 'El auto seleccionado no existe',
+        CAR_NOT_OWNED_BY_USER: 'El auto seleccionado no te pertenece',
+        CAR_DATA_REQUIRED: 'Los datos del auto son requeridos si no seleccionas uno existente'
       };
 
       const message = errorMessages[error.message] || 'Error al enviar solicitud de participación';
@@ -417,28 +462,35 @@ export class EventController {
 
   static async updateParticipantStatus(req: Request, res: Response) {
     try {
-      const userId = (req as any).user?.userId;
+      const user = (req as any).user;
+      const userId = user?.userId;
+      const userRole = user?.roleSlug;
+      
       const eventId = Number(req.params.id);
       const participantId = Number(req.params.participantId);
       const { status } = req.body as { status: 'CONFIRMED' | 'CANCELLED' };
 
-      // Verificar que el usuario es el organizador
+      // Verificar que el usuario es el organizador O es administrador
       const isOrg = await EventService.isOrganizer(userId, eventId);
+      const isAdmin = userRole === 'admin';
 
-      if (!isOrg) {
+      if (!isOrg && !isAdmin) {
         return res.status(403).json({
           success: false,
-          message: 'No tienes permisos para gestionar participantes. Solo el organizador puede realizar esta acción.'
+          message: 'No tienes permisos para gestionar participantes. Solo el organizador o un administrador pueden realizar esta acción.'
         });
       }
 
       // Verificar que el participante pertenece a este evento
       const participant = await EventService.getParticipantById(participantId);
 
-      if (participant.event.id !== eventId) {
+      // Log para debug
+      console.log(`Validando evento: ParticipanteEventId=${participant.eventId}, ParamEventId=${eventId}`);
+
+      if (participant.eventId !== eventId) {
         return res.status(404).json({
           success: false,
-          message: 'El participante no pertenece a este evento'
+          message: `El participante no pertenece a este evento (ParticipanteEventId: ${participant.eventId}, RequestEventId: ${eventId})`
         });
       }
 

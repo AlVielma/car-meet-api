@@ -1,5 +1,7 @@
 import prisma from '../configs/database.js';
 import { Prisma } from '@prisma/client';
+import fs from 'fs';
+import { NotificationService } from './notification.service.js';
 
 import type {
   CreateEventDto,
@@ -9,6 +11,32 @@ import type {
 } from '../interfaces/event.js';
 
 export class EventService {
+  private static getFullUrl(path: string): string {
+    const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+    const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+    if (cleanPath.startsWith('http')) return cleanPath;
+    // Normalizar slashes para evitar problemas con rutas de Windows en URLs
+    const normalizedPath = cleanPath.replace(/\\/g, '/');
+    return `${baseUrl}/${normalizedPath}`;
+  }
+
+  private static mapEventToResponse(event: any): EventResponse {
+    return {
+      ...event,
+      organizer: {
+        ...event.organizer,
+        photos: event.organizer.photos.map((photo: any) => ({
+          ...photo,
+          url: EventService.getFullUrl(photo.url)
+        }))
+      },
+      photos: event.photos.map((photo: any) => ({
+        ...photo,
+        url: EventService.getFullUrl(photo.url)
+      }))
+    };
+  }
+
   static async getAllEvents(
     page: number = 1,
     limit: number = 10,
@@ -99,7 +127,7 @@ export class EventService {
     ]);
 
     return {
-      events,
+      events: events.map(event => this.mapEventToResponse(event)),
       pagination: {
         page,
         limit,
@@ -170,11 +198,11 @@ export class EventService {
       throw new Error('EVENT_NOT_FOUND');
     }
 
-    return event;
+    return this.mapEventToResponse(event);
   }
 
   static async createEvent(data: CreateEventDto): Promise<EventResponse> {
-    const { organizerId, name, description, location, date, startTime, endTime } = data;
+    const { organizerId, name, description, location, date, startTime, endTime, photoPath } = data;
 
     // Verificar que el organizador existe
     const organizerExists = await prisma.user.findUnique({
@@ -185,17 +213,38 @@ export class EventService {
       throw new Error('USER_NOT_FOUND');
     }
 
-    const event = await prisma.event.create({
-      data: {
-        organizerId,
-        name,
-        description: description || null,
-        location,
-        date,
-        startTime,
-        endTime: endTime || null,
-        status: 'ACTIVE',
-      },
+    // Usar una transacción para crear el evento y la foto si existe
+    const event = await prisma.$transaction(async (tx) => {
+      const newEvent = await tx.event.create({
+        data: {
+          organizerId,
+          name,
+          description: description || null,
+          location,
+          date,
+          startTime,
+          endTime: endTime || null,
+          status: 'ACTIVE',
+        },
+      });
+
+      if (photoPath) {
+        await tx.photo.create({
+          data: {
+            url: photoPath,
+            type: 'EVENT',
+            eventId: newEvent.id,
+            isMain: true,
+          },
+        });
+      }
+
+      return newEvent;
+    });
+
+    // Obtener el evento completo con relaciones
+    const fullEvent = await prisma.event.findUnique({
+      where: { id: event.id },
       select: {
         id: true,
         name: true,
@@ -247,12 +296,19 @@ export class EventService {
       },
     });
 
-    return event;
+    if (!fullEvent) throw new Error('Error al recuperar el evento creado');
+
+    return this.mapEventToResponse(fullEvent);
   }
 
   static async updateEvent(id: number, organizerId: number, data: UpdateEventDto): Promise<EventResponse> {
     const existingEvent = await prisma.event.findUnique({
       where: { id },
+      include: {
+        photos: {
+          where: { type: 'EVENT', isMain: true }
+        }
+      }
     });
 
     if (!existingEvent) {
@@ -264,6 +320,49 @@ export class EventService {
     //   console.log(`⛔ Error de permisos: El usuario ${organizerId} intentó modificar el evento ${id}, pero el dueño es ${existingEvent.organizerId}`);
     //   throw new Error('UNAUTHORIZED');
     // }
+
+    // Manejo de la foto del evento
+    if (data.photoPath) {
+      const currentPhoto = existingEvent.photos[0];
+      
+      if (currentPhoto) {
+        // Si existe una foto anterior, eliminar el archivo físico
+        if (currentPhoto.url) {
+          try {
+            // Extraer la ruta relativa si es una URL completa
+            const relativePath = currentPhoto.url.includes('http') 
+              ? currentPhoto.url.split('/').slice(3).join('/') // Ajustar según estructura de URL
+              : currentPhoto.url;
+
+            // Intentar borrar solo si parece ser un archivo local
+            if (!relativePath.startsWith('http') && fs.existsSync(relativePath)) {
+              fs.unlinkSync(relativePath);
+            } else if (fs.existsSync(currentPhoto.url)) {
+               // Intento directo por si acaso se guardó la ruta relativa
+               fs.unlinkSync(currentPhoto.url);
+            }
+          } catch (error) {
+            console.error('Error al eliminar foto anterior del evento:', error);
+          }
+        }
+
+        // Actualizar el registro de la foto
+        await prisma.photo.update({
+          where: { id: currentPhoto.id },
+          data: { url: data.photoPath }
+        });
+      } else {
+        // Si no tenía foto, crear una nueva
+        await prisma.photo.create({
+          data: {
+            url: data.photoPath,
+            type: 'EVENT',
+            eventId: id,
+            isMain: true,
+          }
+        });
+      }
+    }
 
     const updateData: any = {};
 
@@ -332,7 +431,91 @@ export class EventService {
       },
     });
 
-    return event;
+    return this.mapEventToResponse(event);
+  }
+
+  static async getUserParticipations(userId: number) {
+    const participations = await prisma.eventParticipant.findMany({
+      where: { userId },
+      include: {
+        event: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            location: true,
+            date: true,
+            startTime: true,
+            endTime: true,
+            status: true,
+            createdAt: true,
+            updatedAt: true,
+            organizer: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                photos: {
+                  select: {
+                    id: true,
+                    url: true,
+                    isMain: true,
+                  },
+                  where: {
+                    type: 'PROFILE',
+                  },
+                  orderBy: {
+                    isMain: 'desc',
+                  },
+                },
+              },
+            },
+            photos: {
+              select: {
+                id: true,
+                url: true,
+                caption: true,
+                isMain: true,
+              },
+              where: {
+                type: 'EVENT',
+              },
+              orderBy: {
+                isMain: 'desc',
+              },
+            },
+            _count: {
+              select: {
+                participants: true,
+              },
+            },
+          },
+        },
+        car: {
+          include: {
+            photos: {
+              where: { type: 'CAR', isMain: true },
+              select: { url: true }
+            }
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    return participations.map(p => ({
+      id: p.id,
+      status: p.status,
+      joinedAt: p.createdAt,
+      event: this.mapEventToResponse(p.event),
+      car: {
+        ...p.car,
+        photoUrl: p.car.photos[0] ? this.getFullUrl(p.car.photos[0].url) : null
+      }
+    }));
   }
 
   static async deleteEvent(id: number, organizerId: number): Promise<void> {
@@ -414,7 +597,7 @@ export class EventService {
       },
     });
 
-    return events;
+    return events.map(event => this.mapEventToResponse(event));
   }
 
   static async cancelEvent(id: number, organizerId: number): Promise<EventResponse> {
@@ -496,7 +679,7 @@ export class EventService {
       },
     });
 
-    return event;
+    return this.mapEventToResponse(event);
   }
 
   static async isOrganizer(userId: number, eventId: number): Promise<boolean> {
@@ -511,7 +694,8 @@ export class EventService {
   static async participateInEvent(params: {
     userId: number;
     eventId: number;
-    car: {
+    carId?: number;
+    car?: {
       brand: string;
       model: string;
       year: number;
@@ -522,7 +706,7 @@ export class EventService {
     };
     photoUrl?: string | null;
   }) {
-    const { userId, eventId, car, photoUrl } = params;
+    const { userId, eventId, carId, car, photoUrl } = params;
 
     // Verificar que el evento existe y está activo
     const event = await prisma.event.findUnique({
@@ -555,30 +739,53 @@ export class EventService {
 
     try {
       const result = await prisma.$transaction(async (tx) => {
-        // Crear el auto
-        const createdCar = await tx.car.create({
-          data: {
-            userId,
-            brand: car.brand,
-            model: car.model,
-            year: car.year,
-            color: car.color,
-            licensePlate: car.licensePlate ?? null,
-            description: car.description ?? null,
-            modifications: car.modifications ?? null
-          }
-        });
+        let finalCarId: number;
 
-        // Si hay foto, crearla
-        if (photoUrl) {
-          await tx.photo.create({
+        if (carId) {
+          // Verificar que el auto existe y pertenece al usuario
+          const existingCar = await tx.car.findUnique({
+            where: { id: carId }
+          });
+
+          if (!existingCar) {
+            throw new Error('CAR_NOT_FOUND');
+          }
+
+          if (existingCar.userId !== userId) {
+            throw new Error('CAR_NOT_OWNED_BY_USER');
+          }
+          finalCarId = carId;
+        } else {
+          if (!car) throw new Error('CAR_DATA_REQUIRED');
+
+          // Crear el auto
+          const createdCar = await tx.car.create({
             data: {
-              url: photoUrl,
-              type: 'CAR',
-              carId: createdCar.id,
-              isMain: true
+              userId,
+              brand: car.brand,
+              model: car.model,
+              year: car.year,
+              color: car.color,
+              licensePlate: car.licensePlate ?? null,
+              description: car.description ?? null,
+              modifications: car.modifications ?? null
             }
           });
+
+          // Si hay foto, crearla
+          if (photoUrl) {
+            // Normalizar ruta para Windows
+            const normalizedPath = photoUrl.replace(/\\/g, '/');
+            await tx.photo.create({
+              data: {
+                url: normalizedPath,
+                type: 'CAR',
+                carId: createdCar.id,
+                isMain: true
+              }
+            });
+          }
+          finalCarId = createdCar.id;
         }
 
         // Crear la participación
@@ -586,7 +793,7 @@ export class EventService {
           data: {
             eventId,
             userId,
-            carId: createdCar.id,
+            carId: finalCarId,
             status: 'PENDING'
           },
           include: {
@@ -736,7 +943,7 @@ export class EventService {
       throw new Error('PARTICIPANT_NOT_FOUND');
     }
 
-    return prisma.eventParticipant.update({
+    const updatedParticipant = await prisma.eventParticipant.update({
       where: { id: participantId },
       data: { status },
       include: {
@@ -746,6 +953,11 @@ export class EventService {
             firstName: true,
             lastName: true,
             email: true
+          }
+        },
+        event: {
+          select: {
+            name: true
           }
         },
         car: {
@@ -758,6 +970,23 @@ export class EventService {
         }
       }
     });
+
+    // Enviar notificación push al usuario
+    if (status === 'CONFIRMED') {
+      await NotificationService.sendPushNotification(updatedParticipant.userId, {
+        title: '¡Solicitud Aceptada!',
+        body: `Tu participación en el evento "${updatedParticipant.event.name}" ha sido confirmada.`,
+        url: `/events/${updatedParticipant.eventId}`
+      });
+    } else if (status === 'CANCELLED') {
+      await NotificationService.sendPushNotification(updatedParticipant.userId, {
+        title: 'Solicitud Rechazada',
+        body: `Lo sentimos, tu participación en el evento "${updatedParticipant.event.name}" no ha sido aceptada.`,
+        url: `/events/${updatedParticipant.eventId}`
+      });
+    }
+
+    return updatedParticipant;
   }
 
   static async getAllParticipants(params: {

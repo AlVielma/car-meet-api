@@ -10,12 +10,15 @@ import userRoutes from "./routes/user.routes.js";
 import eventRoutes from "./routes/event.routes.js";
 import carRoutes from "./routes/car.routes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
+import notificationRoutes from "./routes/notification.routes.js";
+import { configureWebPush } from "./services/notification.service.js";
 
 // Para obtener __dirname en ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 dotenv.config();
+configureWebPush();
 
 const PORT = process.env.PORT || 3000;
 const app = express();
@@ -66,6 +69,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/cars", carRoutes);
 app.use("/api/analytics", analyticsRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // Manejador de errores 404
 app.use((req: Request, res: Response) => {

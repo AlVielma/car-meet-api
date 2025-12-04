@@ -189,7 +189,13 @@ export const participateEventValidator = [
     .isInt({ min: 1 })
     .withMessage('ID de evento inválido'),
 
+  body('carId')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('ID de auto inválido'),
+
   body('brand')
+    .if(body('carId').not().exists())
     .notEmpty()
     .withMessage('La marca del auto es requerida')
     .bail()
@@ -201,6 +207,7 @@ export const participateEventValidator = [
     .withMessage('La marca debe tener entre 2 y 50 caracteres'),
 
   body('model')
+    .if(body('carId').not().exists())
     .notEmpty()
     .withMessage('El modelo del auto es requerido')
     .bail()
@@ -212,6 +219,7 @@ export const participateEventValidator = [
     .withMessage('El modelo debe tener entre 1 y 50 caracteres'),
 
   body('year')
+    .if(body('carId').not().exists())
     .notEmpty()
     .withMessage('El año del auto es requerido')
     .bail()
@@ -219,6 +227,7 @@ export const participateEventValidator = [
     .withMessage(`El año debe estar entre 1900 y ${new Date().getFullYear() + 1}`),
 
   body('color')
+    .if(body('carId').not().exists())
     .notEmpty()
     .withMessage('El color del auto es requerido')
     .bail()

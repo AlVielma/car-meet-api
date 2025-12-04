@@ -7,6 +7,7 @@ export interface CreateEventDto {
   date: Date;
   startTime: Date;
   endTime?: Date;
+  photoPath?: string;
 }
 
 export interface UpdateEventDto {
@@ -17,6 +18,7 @@ export interface UpdateEventDto {
   startTime?: Date;
   endTime?: Date;
   status?: 'ACTIVE' | 'CANCELLED' | 'FINISHED';
+  photoPath?: string;
 }
 
 // Tipos de respuesta
