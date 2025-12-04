@@ -10,6 +10,6 @@ if (!process.env.RESEND_API_KEY) {
 export const resend = new Resend(process.env.RESEND_API_KEY);
 
 export const emailConfig = {
-  from: process.env.EMAIL_FROM_ADDRESS || 'onboarding@resend.dev',
+  from: process.env.EMAIL_FROM_ADDRESS || 'noreply@carlosduron.online',
   fromName: process.env.EMAIL_FROM_NAME || 'Car Meet App',
 };

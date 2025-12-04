@@ -13,19 +13,16 @@ export interface SendEmailOptions {
 }
 
 export class EmailService {
-  /**
-   * Envía un correo electrónico usando Resend
-   */
   static async sendEmail(options: SendEmailOptions): Promise<boolean> {
     try {
-      // Si no hay API key configurada, solo logea (para desarrollo)
       if (!process.env.RESEND_API_KEY) {
         console.log('📧 Email simulado (Resend no configurado):');
         console.log('Para:', options.to);
         console.log('Asunto:', options.subject);
-        console.log('---');
         return true;
       }
+
+      console.log(`📧 Enviando email desde: ${emailConfig.from} → ${options.to}`);
 
       const { data, error } = await resend.emails.send({
         from: `${emailConfig.fromName} <${emailConfig.from}>`,
@@ -48,9 +45,6 @@ export class EmailService {
     }
   }
 
-  /**
-   * Envía el correo de activación de cuenta
-   */
   static async sendActivationEmail(
     userEmail: string,
     userName: string,
@@ -66,9 +60,6 @@ export class EmailService {
     });
   }
 
-  /**
-   * Envía confirmación de cuenta activada
-   */
   static async sendActivationSuccessEmail(
     userEmail: string,
     userName: string
@@ -83,9 +74,6 @@ export class EmailService {
     });
   }
 
-  /**
-   * Envía código de verificación para 2FA
-   */
   static async sendVerificationCode(
     userEmail: string,
     userName: string,
@@ -101,4 +89,3 @@ export class EmailService {
     });
   }
 }
-
