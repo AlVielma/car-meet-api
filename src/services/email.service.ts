@@ -18,13 +18,14 @@ export class EmailService {
    */
   static async sendEmail(options: SendEmailOptions): Promise<boolean> {
     try {
-      // Si no hay API key configurada, solo logea (para desarrollo)
+      // Verificar si Resend está configurado
       if (!process.env.RESEND_API_KEY) {
-        console.log("📧 Email simulado (Resend no configurado):");
+        console.warn("⚠️  RESEND_API_KEY no configurada. Email no enviado.");
+        console.log("📧 Email simulado:");
         console.log("Para:", options.to);
         console.log("Asunto:", options.subject);
         console.log("---");
-        return true;
+        return false; // Cambiar a false para indicar que no se envió realmente
       }
 
       const { data, error } = await resend.emails.send({
@@ -42,7 +43,7 @@ export class EmailService {
         return false;
       }
 
-      console.log("✅ Email enviado con Resend:", data?.id);
+      console.log("✅ Email enviado con Resend. ID:", data?.id);
       return true;
     } catch (error) {
       console.error("❌ Error al enviar email:", error);
