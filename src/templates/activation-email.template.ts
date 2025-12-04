@@ -300,7 +300,10 @@ export const getActivationSuccessTemplate = (userName: string): string => {
   `;
 };
 
-export const getVerificationCodeTemplate = (userName: string, verificationCode: string): string => {
+export const getVerificationCodeTemplate = (
+  userName: string,
+  verificationCode: string
+): string => {
   return `
 <!DOCTYPE html>
 <html lang="es">
@@ -452,4 +455,3 @@ export const getVerificationCodeTemplate = (userName: string, verificationCode: 
 </html>
   `;
 };
-
