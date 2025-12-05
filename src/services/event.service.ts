@@ -42,7 +42,8 @@ export class EventService {
     limit: number = 10,
     status?: string,
     organizerId?: number,
-    upcoming?: boolean
+    upcoming?: boolean,
+    search?: string
   ): Promise<PaginatedEventsResponse> {
     const skip = (page - 1) * limit;
 
@@ -60,6 +61,14 @@ export class EventService {
       where.date = {
         gte: new Date(),
       };
+    }
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+        { location: { contains: search, mode: 'insensitive' } }
+      ];
     }
 
     const [events, total] = await Promise.all([

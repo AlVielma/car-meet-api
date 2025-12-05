@@ -182,6 +182,12 @@ export const getEventsValidator = [
     .bail()
     .isBoolean()
     .withMessage('upcoming debe ser true o false'),
+
+  query('search')
+    .optional()
+    .isString()
+    .trim()
+    .withMessage('El término de búsqueda debe ser un texto'),
 ];
 
 export const participateEventValidator = [

@@ -16,8 +16,9 @@ export class EventController {
       const status = req.query.status as string | undefined;
       const organizerId = req.query.organizerId ? parseInt(req.query.organizerId as string) : undefined;
       const upcoming = req.query.upcoming === 'true';
+      const search = req.query.search as string | undefined;
 
-      const result = await EventService.getAllEvents(page, limit, status, organizerId, upcoming);
+      const result = await EventService.getAllEvents(page, limit, status, organizerId, upcoming, search);
 
       return ResponseUtil.success(
         res,
