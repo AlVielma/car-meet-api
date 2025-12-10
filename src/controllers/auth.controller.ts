@@ -79,7 +79,7 @@ export class AuthController {
       const { token } = req.params;
 
       const frontendUrl = process.env.NODE_ENV === 'production'
-        ? (process.env.FRONTEND_URL || 'http://localhost:8100') 
+        ? (process.env.FRONTEND_URL || 'http://localhost:8100')
         : 'http://localhost:8100';
 
       if (!token) {
@@ -154,6 +154,65 @@ export class AuthController {
         return ResponseUtil.error(
           res,
           "Tu cuenta no ha sido activada. Por favor, revisa tu correo electrónico.",
+          null,
+          403
+        );
+      }
+
+      return ResponseUtil.serverError(res, "Error al iniciar sesión", error);
+    }
+  }
+
+  /**
+ * Login específico para administradores: valida rol antes de enviar código
+ */
+  static async adminLogin(req: Request, res: Response): Promise<Response> {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return ResponseUtil.validationError(res, errors.array());
+      }
+
+      const { email, password } = req.body;
+
+      // Llamar al servicio para verificar si es admin
+      const adminLoginResponse = await AuthService.adminLoginStep1({
+        email,
+        password,
+      });
+
+      return ResponseUtil.success(
+        res,
+        adminLoginResponse.message,
+        { email: adminLoginResponse.email, role: adminLoginResponse.role },
+        200
+      );
+    } catch (error: any) {
+      console.error("Error en adminLogin:", error);
+
+      // Manejo de errores específicos
+      if (error.message === "INVALID_CREDENTIALS") {
+        return ResponseUtil.error(
+          res,
+          "Email o contraseña incorrectos",
+          null,
+          401
+        );
+      }
+
+      if (error.message === "ACCOUNT_NOT_ACTIVATED") {
+        return ResponseUtil.error(
+          res,
+          "Tu cuenta no ha sido activada. Por favor, revisa tu correo electrónico.",
+          null,
+          403
+        );
+      }
+
+      if (error.message === "NOT_ADMIN") {
+        return ResponseUtil.error(
+          res,
+          "Acceso denegado. Solo administradores pueden acceder.",
           null,
           403
         );

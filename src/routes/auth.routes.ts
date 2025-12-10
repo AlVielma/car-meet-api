@@ -34,6 +34,13 @@ router.get("/activate/:token", AuthController.activateAccount);
 router.post("/login", loginValidator, AuthController.login);
 
 /**
+ * @route   POST /api/auth/admin-login
+ * @desc    Login específico para administradores: valida rol antes de enviar código
+ * @access  Public
+ */
+router.post("/admin-login", loginValidator, AuthController.adminLogin);
+
+/**
  * @route   POST /api/auth/verify-code
  * @desc    Segundo paso del login: verifica el código de verificación
  * @access  Public

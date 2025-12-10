@@ -466,7 +466,7 @@ export class EventController {
       const user = (req as any).user;
       const userId = user?.userId;
       const userRole = user?.roleSlug;
-      
+
       const eventId = Number(req.params.id);
       const participantId = Number(req.params.participantId);
       const { status } = req.body as { status: 'CONFIRMED' | 'CANCELLED' };
@@ -524,7 +524,10 @@ export class EventController {
 
   static async getAllParticipants(req: Request, res: Response) {
     try {
-      const userId = (req as any).user?.userId;
+      const user = (req as any).user;
+      const userId = user?.userId;
+      const userRole = user?.roleSlug; // Obtenemos el rol del usuario
+
       const status = req.query.status as 'PENDING' | 'CONFIRMED' | 'CANCELLED' | undefined;
       const page = req.query.page ? Number(req.query.page) : 1;
       const limit = req.query.limit ? Number(req.query.limit) : 20;
@@ -536,20 +539,28 @@ export class EventController {
         });
       }
 
-      // Obtener todas las participaciones de los eventos del organizador
+      // Configurar parámetros de búsqueda
       const participantParams: {
-        organizerId: number;
+        organizerId?: number;
         status?: 'PENDING' | 'CONFIRMED' | 'CANCELLED';
         page?: number;
         limit?: number;
       } = {
-        organizerId: userId,
         page,
         limit
       };
+
+      // LOGICA CORREGIDA:
+      // Si NO es admin, filtramos para que solo vea sus propios eventos.
+      // Si ES admin, no enviamos organizerId, por lo que el servicio traerá todo.
+      if (userRole !== 'admin') {
+        participantParams.organizerId = userId;
+      }
+
       if (status !== undefined) {
         participantParams.status = status;
       }
+
       const result = await EventService.getAllParticipants(participantParams);
 
       return res.json({
