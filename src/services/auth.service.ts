@@ -111,16 +111,16 @@ export class AuthService {
   private static parseTimeToSeconds(timeString: string): number {
     const timeRegex = /^(\d+)([smhd])$/;
     const match = timeString.match(timeRegex);
-    
+
     if (!match || !match[1] || !match[2]) {
       // Si no puede parsear, asume que son días por defecto
       return 7 * 24 * 60 * 60; // 7 días en segundos
     }
-    
+
     const amount = match[1];
     const unit = match[2];
     const numAmount = parseInt(amount, 10);
-    
+
     switch (unit) {
       case 's': return numAmount; // segundos
       case 'm': return numAmount * 60; // minutos a segundos
@@ -219,11 +219,11 @@ export class AuthService {
 
     // Generar token de activación
     const activationToken = JwtUtil.generateActivationToken(user.id, user.email);
-    
+
     // Construir URL de activación
     const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
     const activationUrl = `${baseUrl}/api/auth/activate/${activationToken}`;
-    
+
     // Enviar correo de activación (no bloqueante, se ejecuta en segundo plano)
     EmailService.sendActivationEmail(
       user.email,
@@ -355,7 +355,7 @@ export class AuthService {
     // Generar código de verificación de 6 dígitos
     const verificationCode = this.generateVerificationCode();
     const hashedCode = await PasswordUtil.hash(verificationCode);
-    
+
     // Calcular tiempo de expiración (5 minutos)
     const codeExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
@@ -380,6 +380,77 @@ export class AuthService {
     return {
       message: 'Código de verificación enviado a tu correo electrónico',
       email: user.email,
+    };
+  }
+
+  /**
+ * Login específico para admin: valida rol antes de enviar código
+ */
+  static async adminLoginStep1(credentials: {
+    email: string;
+    password: string;
+  }): Promise<{ message: string; email: string; role: string }> {
+    const { email, password } = credentials;
+
+    // Buscar usuario por email
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        password: true,
+        firstName: true,
+        isActive: true,
+        roleId: true,
+      },
+    });
+
+    if (!user) {
+      throw new Error("INVALID_CREDENTIALS");
+    }
+
+    // Verificar contraseña
+    const isPasswordValid = await PasswordUtil.compare(password, user.password);
+    if (!isPasswordValid) {
+      throw new Error("INVALID_CREDENTIALS");
+    }
+
+    // Verificar cuenta activa
+    if (!user.isActive) {
+      throw new Error("ACCOUNT_NOT_ACTIVATED");
+    }
+
+    // VALIDAR SI ES ADMIN (roleId = 1)
+    if (user.roleId !== 1) {
+      throw new Error("NOT_ADMIN");
+    }
+
+    // Si es admin, generar y enviar código de verificación
+    const verificationCode = this.generateVerificationCode();
+    const hashedCode = await PasswordUtil.hash(verificationCode);
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutos
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        verificationCode: hashedCode,
+        codeExpiresAt: expiresAt,
+      },
+    });
+
+    // Enviar email con código
+    EmailService.sendVerificationCode(
+      user.email,
+      user.firstName,
+      verificationCode
+    ).catch((error) => {
+      console.error('Error al enviar código de verificación:', error);
+    });
+
+    return {
+      message: "Código de verificación enviado a tu correo",
+      email: user.email,
+      role: "admin",
     };
   }
 
@@ -511,7 +582,7 @@ export class AuthService {
     // Generar nuevo código de verificación de 6 dígitos
     const verificationCode = this.generateVerificationCode();
     const hashedCode = await PasswordUtil.hash(verificationCode);
-    
+
     // Calcular tiempo de expiración (5 minutos)
     const codeExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
@@ -559,7 +630,7 @@ export class AuthService {
     // Manejo de la foto de perfil
     if (data.photoPath) {
       const currentPhoto = user.photos[0];
-      
+
       if (currentPhoto) {
         // Si existe una foto anterior y no es la por defecto, eliminar el archivo físico
         if (currentPhoto.url && !currentPhoto.url.includes('defaults/')) {
@@ -591,11 +662,11 @@ export class AuthService {
     }
 
     const updateData: any = {};
-    
+
     if (data.firstName) updateData.firstName = data.firstName;
     if (data.lastName) updateData.lastName = data.lastName;
     if (data.phone !== undefined) updateData.phone = data.phone || null;
-    
+
     await prisma.user.update({
       where: { id: userId },
       data: updateData,
