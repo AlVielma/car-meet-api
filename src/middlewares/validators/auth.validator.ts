@@ -84,7 +84,13 @@ export const loginValidator = [
     .withMessage('La contraseña es requerida')
     .bail()
     .isString()
-    .withMessage('La contraseña debe ser un texto'),
+    .withMessage('La contraseña debe ser un texto')
+    .bail()
+    .isLength({ min: 8 })
+    .withMessage('La contraseña debe tener al menos 8 caracteres')
+    .bail()
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&.#_\-])[A-Za-z\d@$!%*?&.#_\-]{8,}$/)
+    .withMessage('La contraseña debe contener al menos una mayúscula, una minúscula, un número y un carácter especial (@$!%*?&.#_-)'),
 ];
 
 export const verifyCodeValidator = [
